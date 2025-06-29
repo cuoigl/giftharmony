@@ -26,8 +26,16 @@ interface User {
   created_at?: string;
 }
 
+interface RegisterData {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: (User & { name: string }) | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -38,21 +46,11 @@ interface AuthContextType {
   loadCurrentUser?: () => Promise<void>;
 }
 
-interface RegisterData {
-  email: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
 
@@ -60,6 +58,25 @@ interface AuthProviderProps {
   children: ReactNode;
   onRequireLogin: () => void;
 }
+
+const transformUser = (data: any): User => ({
+  id: data.id,
+  email: data.email,
+  first_name: data.first_name,
+  last_name: data.last_name,
+  role: data.role,
+  avatar: data.avatar,
+  points: data.points,
+  level: data.level,
+  phone: data.phone,
+  address: data.address,
+  city: data.city,
+  district: data.district,
+  ward: data.ward,
+  birthDate: data.birthdate || data.birthDate,
+  gender: data.gender,
+  created_at: data.created_at,
+});
 
 export const AuthProvider = ({
   children,
@@ -69,122 +86,54 @@ export const AuthProvider = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    const userData = localStorage.getItem("user");
-    if (token && userData) {
-      apiService.setToken(token);
-      setUser(JSON.parse(userData));
-      // Luôn xác thực lại với backend để đảm bảo token còn hợp lệ
-      loadCurrentUser();
-    } else if (token) {
-      apiService.setToken(token);
-      loadCurrentUser();
-    } else {
-      setIsLoading(false);
-    }
+    const initializeAuth = async () => {
+      try {
+        const token = localStorage.getItem("auth_token");
+        const userData = localStorage.getItem("user");
+
+        if (token) {
+          apiService.setToken(token);
+          if (userData) setUser(JSON.parse(userData));
+          await loadCurrentUser();
+        }
+      } catch (err) {
+        logout();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
-  // Khi loadCurrentUser thành công, cũng lưu user vào localStorage
   const loadCurrentUser = async () => {
     try {
-      const response = (await apiService.getCurrentUser()) as { user: User };
-      const userData = response.user;
-      const transformedUser: User = {
-        id: userData.id,
-        email: userData.email,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        role: userData.role,
-        avatar: userData.avatar,
-        points: userData.points,
-        level: userData.level,
-        phone: userData.phone,
-        address: userData.address,
-        city: userData.city,
-        district: userData.district,
-        ward: userData.ward,
-        birthDate: (userData as any).birthdate || userData.birthDate,
-        gender: userData.gender,
-        created_at: (userData as any).created_at || undefined,
-      };
-      setUser(transformedUser);
-      localStorage.setItem("user", JSON.stringify(transformedUser));
-      setIsLoading(false);
+      const res = await apiService.getCurrentUser();
+      const transformed = transformUser(res.user);
+      setUser(transformed);
+      localStorage.setItem("user", JSON.stringify(transformed));
     } catch (error) {
-      // Nếu token hết hạn hoặc không hợp lệ, logout hoàn toàn
       logout();
-      setIsLoading(false);
+      throw error;
     }
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = (await apiService.login({ email, password })) as {
-        user: User;
-        token: string;
-      };
-      // Set token
-      apiService.setToken(response.token);
-      // Transform user data
-      const userData = response.user;
-      const transformedUser: User = {
-        id: userData.id,
-        email: userData.email,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        role: userData.role,
-        avatar: userData.avatar,
-        points: userData.points,
-        level: userData.level,
-        phone: userData.phone,
-        address: userData.address,
-        city: userData.city,
-        district: userData.district,
-        ward: userData.ward,
-        birthDate: (userData as any).birthdate || userData.birthDate,
-        gender: userData.gender,
-        created_at: (userData as any).created_at || undefined,
-      };
-      setUser(transformedUser);
-      // Lưu user vào localStorage để giữ đăng nhập khi F5
-      localStorage.setItem("user", JSON.stringify(transformedUser));
-    } catch (error) {
-      throw error;
-    }
+    const res = await apiService.login({ email, password });
+    apiService.setToken(res.token);
+    localStorage.setItem("auth_token", res.token);
+    const transformed = transformUser(res.user);
+    setUser(transformed);
+    localStorage.setItem("user", JSON.stringify(transformed));
   };
 
   const register = async (userData: RegisterData) => {
-    try {
-      const response = (await apiService.register(userData)) as {
-        user: User;
-        token: string;
-      };
-      // Set token
-      apiService.setToken(response.token);
-      // Transform user data
-      const user = response.user;
-      const transformedUser: User = {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role: user.role,
-        avatar: user.avatar,
-        points: user.points,
-        level: user.level,
-        phone: user.phone,
-        address: user.address,
-        city: user.city,
-        district: user.district,
-        ward: user.ward,
-        birthDate: (user as any).birthdate || user.birthDate,
-        gender: user.gender,
-        created_at: (user as any).created_at || undefined,
-      };
-      setUser(transformedUser);
-    } catch (error) {
-      throw error;
-    }
+    const res = await apiService.register(userData);
+    apiService.setToken(res.token);
+    localStorage.setItem("auth_token", res.token);
+    const transformed = transformUser(res.user);
+    setUser(transformed);
+    localStorage.setItem("user", JSON.stringify(transformed));
   };
 
   const logout = () => {
@@ -192,44 +141,40 @@ export const AuthProvider = ({
     localStorage.removeItem("user");
     apiService.setToken(null);
     setUser(null);
+
+    // ✅ Giải pháp triệt để: replace để tránh redirect ngược
+    window.location.replace("/");
   };
 
   const updateProfile = async (updates: any) => {
-    try {
-      await apiService.updateUserProfile(updates);
-      await loadCurrentUser(); // luôn reload lại user từ backend sau khi cập nhật
-    } catch (error) {
-      throw error;
-    }
+    await apiService.updateUserProfile(updates);
+    await loadCurrentUser();
   };
 
   const requireAuth = (action: () => void) => {
-    if (user) {
-      action();
-    } else {
-      onRequireLogin();
-    }
+    if (user) action();
+    else onRequireLogin();
   };
 
-  // Create a user object with name property for backward compatibility
   const userWithName = user
-    ? {
-        ...user,
-        name: `${user.first_name} ${user.last_name}`,
-      }
+    ? { ...user, name: `${user.first_name} ${user.last_name}` }
     : null;
 
-  const value: AuthContextType = {
-    user: userWithName,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    register,
-    logout,
-    requireAuth,
-    updateProfile,
-    loadCurrentUser,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user: userWithName,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+        requireAuth,
+        updateProfile,
+        loadCurrentUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

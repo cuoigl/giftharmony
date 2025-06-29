@@ -6,6 +6,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
   Outlet,
   useParams,
 } from "react-router-dom";
@@ -54,47 +55,78 @@ function ProductDetailWrapper(props: any) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Điều hướng sau đăng nhập
   const handleLoginSuccess = () => {
-    // Lấy user mới nhất từ localStorage (sau khi login hoặc loadCurrentUser)
-    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
-    if (currentUser && currentUser.role === "admin") {
+    if (user?.role === "admin") {
       navigate("/admin/dashboard", { replace: true });
     } else {
       navigate("/dashboard", { replace: true });
     }
   };
 
-  // Điều hướng sau đăng xuất
   const handleLogout = () => {
-    navigate("/", { replace: true });
+    window.location.replace("/");
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fffefc] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#49bbbd] mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
-      {/* Public routes */}
+      {/* ✅ Fix redirect: chỉ redirect khi đang ở / */}
       <Route
         path="/"
         element={
-          <Landing
-            onLogin={() => navigate("/login")}
-            onRegister={() => navigate("/register")}
-          />
+          isAuthenticated && location.pathname === "/" ? (
+            <Navigate
+              to={user?.role === "admin" ? "/admin/dashboard" : "/dashboard"}
+              replace
+            />
+          ) : (
+            <Landing
+              onLogin={() => navigate("/login")}
+              onRegister={() => navigate("/register")}
+            />
+          )
         }
       />
       <Route
         path="/login"
         element={
-          <Login onLoginSuccess={handleLoginSuccess} defaultTab="login" />
+          isAuthenticated ? (
+            user?.role === "admin" ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          ) : (
+            <Login onLoginSuccess={handleLoginSuccess} defaultTab="login" />
+          )
         }
       />
       <Route
         path="/register"
         element={
-          <Login onLoginSuccess={handleLoginSuccess} defaultTab="register" />
+          isAuthenticated ? (
+            user?.role === "admin" ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          ) : (
+            <Login onLoginSuccess={handleLoginSuccess} defaultTab="register" />
+          )
         }
       />
 
@@ -295,7 +327,6 @@ function AppRoutes() {
 }
 
 function Root() {
-  // Hàm xử lý khi cần login (ví dụ khi token hết hạn)
   const handleRequireLogin = () => {
     window.location.href = "/login";
   };
