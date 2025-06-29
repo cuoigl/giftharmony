@@ -70,7 +70,13 @@ export const AuthProvider = ({
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
-    if (token) {
+    const userData = localStorage.getItem("user");
+    if (token && userData) {
+      apiService.setToken(token);
+      setUser(JSON.parse(userData));
+      // Luôn xác thực lại với backend để đảm bảo token còn hợp lệ
+      loadCurrentUser();
+    } else if (token) {
       apiService.setToken(token);
       loadCurrentUser();
     } else {
@@ -78,6 +84,7 @@ export const AuthProvider = ({
     }
   }, []);
 
+  // Khi loadCurrentUser thành công, cũng lưu user vào localStorage
   const loadCurrentUser = async () => {
     try {
       const response = (await apiService.getCurrentUser()) as { user: User };
@@ -101,9 +108,11 @@ export const AuthProvider = ({
         created_at: (userData as any).created_at || undefined,
       };
       setUser(transformedUser);
+      localStorage.setItem("user", JSON.stringify(transformedUser));
       setIsLoading(false);
     } catch (error) {
-      setUser(null);
+      // Nếu token hết hạn hoặc không hợp lệ, logout hoàn toàn
+      logout();
       setIsLoading(false);
     }
   };
@@ -137,6 +146,8 @@ export const AuthProvider = ({
         created_at: (userData as any).created_at || undefined,
       };
       setUser(transformedUser);
+      // Lưu user vào localStorage để giữ đăng nhập khi F5
+      localStorage.setItem("user", JSON.stringify(transformedUser));
     } catch (error) {
       throw error;
     }
@@ -178,6 +189,7 @@ export const AuthProvider = ({
 
   const logout = () => {
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("user");
     apiService.setToken(null);
     setUser(null);
   };

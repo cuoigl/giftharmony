@@ -59,7 +59,9 @@ function AppRoutes() {
 
   // Điều hướng sau đăng nhập
   const handleLoginSuccess = () => {
-    if (user && user.role === "admin") {
+    // Lấy user mới nhất từ localStorage (sau khi login hoặc loadCurrentUser)
+    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    if (currentUser && currentUser.role === "admin") {
       navigate("/admin/dashboard", { replace: true });
     } else {
       navigate("/dashboard", { replace: true });

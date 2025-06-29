@@ -7,17 +7,17 @@ interface ProtectedRouteProps {
   fallback?: React.ReactNode;
 }
 
-export const ProtectedRoute = ({
+export function ProtectedRoute({
   requireAdmin = false,
   fallback = null,
-}: ProtectedRouteProps) => {
+}: ProtectedRouteProps): JSX.Element | null {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated || !user) {
-    return fallback;
+    return fallback as any;
   }
   if (requireAdmin && user.role !== "admin") {
-    return fallback;
+    return fallback as any;
   }
   return <Outlet />;
-};
+}
