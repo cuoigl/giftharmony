@@ -1,4 +1,4 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Landing } from "./pages/Landing";
 import { Login } from "./screens/Login";
@@ -26,10 +26,12 @@ import {
   ReviewManagement
 } from "./pages/Admin";
 import { CartProvider } from "./contexts/CartContext";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { WishlistProvider } from "./contexts/WishlistContext";
 import { ToastProvider } from "./components/ui/toast";
 import { Screen } from "./types";
+import { ProtectedRoute } from "./components/common/ProtectedRoute";
+import { Forbidden } from "./pages/Forbidden";
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -37,6 +39,29 @@ function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
+  const { user, isAuthenticated } = useAuth();
+
+  // Auto-redirect to dashboard if logged in and on landing, chỉ khi user thực sự tồn tại
+  useEffect(() => {
+    if (isAuthenticated && user && currentScreen === 'landing') {
+      setCurrentScreen(user.role === 'admin' ? 'admin-dashboard' : 'dashboard');
+    }
+  }, [isAuthenticated, currentScreen, user]);
+
+  // Auto-redirect to landing nếu vừa logout (luôn reset về landing và isAdminMode false)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setCurrentScreen('landing');
+      setIsAdminMode(false);
+    }
+  }, [isAuthenticated]);
+
+  // Reset isAdminMode nếu user không còn là admin hoặc đã logout
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      setIsAdminMode(false);
+    }
+  }, [user]);
 
   const handleRequireLogin = () => {
     setCurrentScreen('login');
@@ -53,7 +78,7 @@ function App() {
 
   const handleLogout = () => {
     setIsAdminMode(false);
-    setCurrentScreen('landing');
+    setCurrentScreen('landing'); // Đảm bảo mọi user luôn về landing khi logout
   };
 
   const handleGoToLogin = () => {
@@ -156,6 +181,36 @@ function App() {
   const handleViewReviews = () => {
     setCurrentScreen('admin-reviews');
   };
+
+  // Nếu chưa xác thực hoặc không có user, chỉ cho phép vào landing/login/register
+  if (!isAuthenticated || !user) {
+    if (currentScreen === 'login') {
+      return (
+        <Login 
+          onLoginSuccess={handleLoginSuccess}
+          onAdminLogin={handleAdminLogin}
+          onBackToLanding={() => setCurrentScreen('landing')}
+          defaultTab="login"
+        />
+      );
+    }
+    if (currentScreen === 'register') {
+      return (
+        <Login 
+          onLoginSuccess={handleLoginSuccess}
+          onAdminLogin={handleAdminLogin}
+          onBackToLanding={() => setCurrentScreen('landing')}
+          defaultTab="register"
+        />
+      );
+    }
+    return (
+      <Landing 
+        onLogin={handleGoToLogin}
+        onRegister={handleGoToRegister}
+      />
+    );
+  }
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -292,58 +347,60 @@ function App() {
       // Admin screens
       case 'admin-dashboard':
         return (
-          <AdminDashboard
-            onViewProducts={handleViewProducts}
-            onViewOrders={handleViewOrders}
-            onViewUsers={handleViewUsers}
-            onViewAnalytics={handleViewAnalytics}
-            onViewInventory={handleViewInventory}
-            onViewPromotions={handleViewPromotions}
-            onViewReviews={handleViewReviews}
-            onLogout={handleLogout}
-          />
+          <ProtectedRoute requireAdmin fallback={<Forbidden onBack={handleBackToDashboard} />}>
+            <AdminDashboard
+              onViewProducts={handleViewProducts}
+              onViewOrders={handleViewOrders}
+              onViewUsers={handleViewUsers}
+              onViewAnalytics={handleViewAnalytics}
+              onViewInventory={handleViewInventory}
+              onViewPromotions={handleViewPromotions}
+              onViewReviews={handleViewReviews}
+              onLogout={handleLogout}
+            />
+          </ProtectedRoute>
         );
       case 'admin-products':
         return (
-          <ProductManagement
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <ProductManagement onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       case 'admin-orders':
         return (
-          <OrderManagement
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <OrderManagement onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       case 'admin-users':
         return (
-          <UserManagement
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <UserManagement onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       case 'admin-analytics':
         return (
-          <Analytics
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <Analytics onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       case 'admin-inventory':
         return (
-          <InventoryManagement
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <InventoryManagement onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       case 'admin-promotions':
         return (
-          <PromotionManagement
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <PromotionManagement onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       case 'admin-reviews':
         return (
-          <ReviewManagement
-            onBack={handleBackToDashboard}
-          />
+          <ProtectedRoute requireAdmin fallback={< Forbidden onBack={handleBackToDashboard} />}>
+            <ReviewManagement onBack={handleBackToDashboard} />
+          </ProtectedRoute>
         );
       default:
         return (
@@ -355,12 +412,17 @@ function App() {
     }
   };
 
+  return renderScreen();
+}
+
+function Root() {
+  // Đảm bảo tất cả Provider bọc ngoài App để giữ state khi F5 hoặc chuyển màn hình
   return (
-    <AuthProvider onRequireLogin={handleRequireLogin}>
+    <AuthProvider onRequireLogin={() => {}}>
       <CartProvider>
         <WishlistProvider>
           <ToastProvider>
-            {renderScreen()}
+            <App />
           </ToastProvider>
         </WishlistProvider>
       </CartProvider>
@@ -370,6 +432,6 @@ function App() {
 
 createRoot(document.getElementById("app") as HTMLElement).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 );

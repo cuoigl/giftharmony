@@ -7,6 +7,7 @@ const router = express.Router();
 // Get user orders
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    console.log('API /orders called by user:', req.user.id);
     const result = await pool.query(
       `SELECT o.*, 
        json_agg(
@@ -25,7 +26,7 @@ router.get('/', authenticateToken, async (req, res) => {
        ORDER BY o.created_at DESC`,
       [req.user.id]
     );
-
+    console.log('Orders result:', JSON.stringify(result.rows, null, 2));
     res.json(result.rows);
   } catch (error) {
     console.error('Get orders error:', error);
@@ -36,11 +37,19 @@ router.get('/', authenticateToken, async (req, res) => {
 // Create order
 router.post('/', authenticateToken, async (req, res) => {
   const client = await pool.connect();
-  
   try {
     await client.query('BEGIN');
 
     const { items, shipping_address } = req.body;
+    console.log('POST /orders called by user:', req.user.id, 'body:', req.body);
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log('Order creation failed: missing items');
+      return res.status(400).json({ message: 'Thiếu danh sách sản phẩm (items)' });
+    }
+    if (!shipping_address) {
+      console.log('Order creation failed: missing shipping_address');
+      return res.status(400).json({ message: 'Thiếu địa chỉ giao hàng (shipping_address)' });
+    }
     let total_amount = 0;
 
     // Calculate total and validate stock
@@ -51,12 +60,16 @@ router.post('/', authenticateToken, async (req, res) => {
       );
 
       if (productResult.rows.length === 0) {
-        throw new Error(`Product ${item.product_id} not found`);
+        console.log('Order creation failed: product not found', item.product_id);
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: `Không tìm thấy sản phẩm ID ${item.product_id}` });
       }
 
       const product = productResult.rows[0];
       if (product.stock_quantity < item.quantity) {
-        throw new Error(`Insufficient stock for product ${item.product_id}`);
+        console.log('Order creation failed: not enough stock for product', item.product_id);
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: `Sản phẩm ID ${item.product_id} không đủ hàng` });
       }
 
       total_amount += product.price * item.quantity;
@@ -69,6 +82,7 @@ router.post('/', authenticateToken, async (req, res) => {
     );
 
     const orderId = orderResult.rows[0].id;
+    console.log('Order created with id:', orderId);
 
     // Create order items and update stock
     for (const item of items) {
@@ -96,6 +110,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     await client.query('COMMIT');
 
+    console.log('Order committed successfully for user:', req.user.id, 'orderId:', orderId, 'total_amount:', total_amount);
     res.status(201).json({
       message: 'Order created successfully',
       order_id: orderId,

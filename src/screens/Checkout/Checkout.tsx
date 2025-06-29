@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/input';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface CheckoutProps {
   onBack: () => void;
@@ -152,26 +153,28 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Generate order ID
-      const orderId = `GH${Date.now().toString().slice(-6)}`;
+      // Gọi API đặt hàng thực tế
+      const orderItems = items.map(item => ({ product_id: item.product_id ?? Number(item.id), quantity: item.quantity }));
+      const shipping_address = `${shippingInfo.address}, ${shippingInfo.ward}, ${shippingInfo.district}, ${shippingInfo.city}`;
+      await apiService.createOrder({
+        items: orderItems,
+        shipping_address
+      });
 
       addToast({
         type: 'success',
         title: 'Đặt hàng thành công!',
-        description: `Mã đơn hàng: ${orderId}. Chúng tôi sẽ liên hệ với bạn sớm nhất.`,
+        description: 'Đơn hàng của bạn đã được ghi nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất.',
         duration: 5000
       });
 
       clearCart();
       onOrderComplete();
-    } catch (error) {
+    } catch (error: any) {
       addToast({
         type: 'error',
         title: 'Đặt hàng thất bại',
-        description: 'Có lỗi xảy ra, vui lòng thử lại sau',
+        description: error?.message || 'Có lỗi xảy ra, vui lòng thử lại sau',
         duration: 5000
       });
     } finally {

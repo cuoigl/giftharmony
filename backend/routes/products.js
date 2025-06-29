@@ -8,8 +8,37 @@ const router = express.Router();
 // Get all products
 router.get("/", async (req, res) => {
   try {
-    const { category, search, page = 1, limit = 10 } = req.query;
+    let { category, search, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
+
+    // Nếu category là tên (string), cần map sang category_id
+    let categoryId = null;
+    if (category) {
+      // Nếu category là số, dùng luôn, nếu là tên thì truy vấn lấy id
+      if (!isNaN(category)) {
+        categoryId = category;
+      } else {
+        // Tìm category_id theo tên (hỗ trợ tiếng Việt, encodeURIComponent)
+        const catResult = await pool.query(
+          "SELECT id FROM categories WHERE name = $1",
+          [decodeURIComponent(category)]
+        );
+        if (catResult.rows.length > 0) {
+          categoryId = catResult.rows[0].id;
+        } else {
+          // Không tìm thấy category, trả về mảng rỗng
+          return res.json({
+            products: [],
+            pagination: {
+              page: parseInt(page),
+              limit: parseInt(limit),
+              total: 0,
+              pages: 0,
+            },
+          });
+        }
+      }
+    }
 
     let query = `
       SELECT p.*, c.name as category_name 
@@ -20,10 +49,10 @@ router.get("/", async (req, res) => {
     const params = [];
     let paramCount = 0;
 
-    if (category) {
+    if (categoryId) {
       paramCount++;
       query += ` AND p.category_id = $${paramCount}`;
-      params.push(category);
+      params.push(categoryId);
     }
 
     if (search) {
@@ -43,16 +72,46 @@ router.get("/", async (req, res) => {
 
     const result = await pool.query(query, params);
 
+    // Nếu search là "quà tặng" hoặc category là "quà tặng" thì trả về các sản phẩm nổi bật (ví dụ: rating cao, bán chạy)
+    let isGiftSearch = false;
+    if (search && search.trim().toLowerCase().includes("quà tặng")) {
+      isGiftSearch = true;
+    }
+    if (category && decodeURIComponent(category).trim().toLowerCase() === "quà tặng") {
+      isGiftSearch = true;
+    }
+
+    if (isGiftSearch) {
+      // Lấy top 20 sản phẩm nổi bật (ví dụ: stock_quantity > 0, order by price desc)
+      const giftResult = await pool.query(`
+        SELECT p.*, c.name as category_name 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id 
+        WHERE p.is_active = true AND p.stock_quantity > 0
+        ORDER BY p.price DESC, p.created_at DESC
+        LIMIT 20
+      `);
+      return res.json({
+        products: giftResult.rows,
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: giftResult.rows.length,
+          pages: 1,
+        },
+      });
+    }
+
     // Get total count
     let countQuery =
       "SELECT COUNT(*) as total FROM products WHERE is_active = true";
     const countParams = [];
     let countParamCount = 0;
 
-    if (category) {
+    if (categoryId) {
       countParamCount++;
       countQuery += ` AND category_id = $${countParamCount}`;
-      countParams.push(category);
+      countParams.push(categoryId);
     }
 
     if (search) {
@@ -77,7 +136,7 @@ router.get("/", async (req, res) => {
     });
   } catch (error) {
     console.error("Get products error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error", detail: error.message });
   }
 });
 

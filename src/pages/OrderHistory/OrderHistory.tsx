@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Search, Filter, Eye, RotateCcw, MessageCircle, X, MapPin, User, Phone, Mail, Calendar, Truck, CheckCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/input';
 import { EmptyState } from '../../components/common';
 import { useToast } from '../../components/ui/toast';
 import { formatPrice, getStatusColor } from '../../utils/formatters';
+import { apiService } from '../../services/api';
 
 interface OrderHistoryProps {
   onBack: () => void;
@@ -42,106 +43,46 @@ interface Order {
 
 export const OrderHistory = ({ onBack, onViewOrderDetail }: OrderHistoryProps): JSX.Element => {
   const { addToast } = useToast();
-  
-  const [orders] = useState<Order[]>([
-    {
-      id: 'GH123456',
-      date: '2025-01-15',
-      items: [
-        {
-          id: 1,
-          name: 'Hoa hồng đỏ cao cấp',
-          image: 'https://images.pexels.com/photos/56866/garden-rose-red-pink-56866.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
-          quantity: 1,
-          price: 299000
-        }
-      ],
-      total: 329000,
-      status: 'Đã giao',
-      shippingAddress: '123 Nguyễn Văn Linh, Q7, TP.HCM',
-      paymentMethod: 'COD',
-      trackingNumber: 'VN123456789',
-      customer: {
-        name: 'Nguyễn Văn A',
-        email: 'nguyenvana@email.com',
-        phone: '0901234567'
-      },
-      shippingFee: 30000,
-      deliveryDate: '2025-01-16',
-      notes: 'Giao hàng trong giờ hành chính'
-    },
-    {
-      id: 'GH123455',
-      date: '2025-01-10',
-      items: [
-        {
-          id: 2,
-          name: 'Đồng hồ thông minh',
-          image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
-          quantity: 1,
-          price: 2999000
-        }
-      ],
-      total: 3049000,
-      status: 'Đang giao',
-      shippingAddress: '123 Nguyễn Văn Linh, Q7, TP.HCM',
-      paymentMethod: 'Chuyển khoản',
-      trackingNumber: 'VN123456788',
-      customer: {
-        name: 'Nguyễn Văn A',
-        email: 'nguyenvana@email.com',
-        phone: '0901234567'
-      },
-      shippingFee: 50000
-    },
-    {
-      id: 'GH123454',
-      date: '2025-01-05',
-      items: [
-        {
-          id: 3,
-          name: 'Chocolate handmade',
-          image: 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
-          quantity: 2,
-          price: 450000
-        }
-      ],
-      total: 930000,
-      status: 'Đã giao',
-      shippingAddress: '123 Nguyễn Văn Linh, Q7, TP.HCM',
-      paymentMethod: 'MoMo',
-      customer: {
-        name: 'Nguyễn Văn A',
-        email: 'nguyenvana@email.com',
-        phone: '0901234567'
-      },
-      shippingFee: 30000,
-      deliveryDate: '2025-01-06'
-    },
-    {
-      id: 'GH123453',
-      date: '2024-12-28',
-      items: [
-        {
-          id: 4,
-          name: 'Nước hoa nữ cao cấp',
-          image: 'https://images.pexels.com/photos/1190829/pexels-photo-1190829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
-          quantity: 1,
-          price: 1200000
-        }
-      ],
-      total: 1230000,
-      status: 'Đã hủy',
-      shippingAddress: '123 Nguyễn Văn Linh, Q7, TP.HCM',
-      paymentMethod: 'COD',
-      customer: {
-        name: 'Nguyễn Văn A',
-        email: 'nguyenvana@email.com',
-        phone: '0901234567'
-      },
-      shippingFee: 30000
-    }
-  ]);
+
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      try {
+        const response = await apiService.getOrders();
+        setOrders(
+          (response || []).map((order: any) => ({
+            id: String(order.id), // Đảm bảo luôn là string để tránh lỗi .toLowerCase()
+            date: order.created_at || order.date || '',
+            items: (order.items || []).map((item: any) => ({
+              id: item.product_id,
+              name: item.product_name,
+              image: '', // Có thể lấy từ DB nếu muốn
+              quantity: item.quantity,
+              price: item.price
+            })),
+            total: order.total_amount,
+            status: order.status || 'Đang xử lý',
+            shippingAddress: order.shipping_address,
+            paymentMethod: order.payment_method || 'COD',
+            trackingNumber: order.tracking_number || '',
+            customer: { name: '', email: '', phone: '' },
+            shippingFee: order.shipping_fee || 0,
+            discount: order.discount || 0,
+            notes: order.notes || '',
+            deliveryDate: order.delivery_date || ''
+          }))
+        );
+      } catch (error) {
+        addToast({ title: 'Lỗi', description: 'Không thể tải lịch sử đơn hàng', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -308,7 +249,11 @@ export const OrderHistory = ({ onBack, onViewOrderDetail }: OrderHistoryProps): 
         </Card>
 
         {/* Orders List */}
-        {filteredOrders.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Đang tải đơn hàng...</p>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <EmptyState
             icon={<Package className="h-24 w-24" />}
             title="Không tìm thấy đơn hàng"

@@ -16,16 +16,24 @@ interface User {
   avatar?: string;
   points?: number;
   level?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  district?: string;
+  ward?: string;
+  birthDate?: string;
+  gender?: string;
 }
 
 interface AuthContextType {
-  user: AuthUser | null;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   requireAuth: (action: () => void) => void;
+  updateProfile?: (updates: any) => Promise<void>;
 }
 
 interface RegisterData {
@@ -59,7 +67,6 @@ export const AuthProvider = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem("auth_token");
     if (token) {
       apiService.setToken(token);
@@ -71,39 +78,34 @@ export const AuthProvider = ({
 
   const loadCurrentUser = async () => {
     try {
-      const response = await apiService.getCurrentUser();
+      const response = (await apiService.getCurrentUser()) as { user: User };
       const userData = response.user;
-
-      // Transform backend user data to frontend format
       const transformedUser: User = {
         id: userData.id,
         email: userData.email,
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
-        avatar: `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1`,
-        points: 1250, // Mock data for now
-        level: userData.role === "admin" ? "Admin" : "Gold Member",
+        avatar: userData.avatar,
+        points: userData.points,
+        level: userData.level,
       };
-
       setUser(transformedUser);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Failed to load current user:", error);
-      // Clear invalid token
-      localStorage.removeItem("auth_token");
-      apiService.setToken(null);
-    } finally {
+      setUser(null);
       setIsLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiService.login({ email, password });
-
+      const response = (await apiService.login({ email, password })) as {
+        user: User;
+        token: string;
+      };
       // Set token
       apiService.setToken(response.token);
-
       // Transform user data
       const userData = response.user;
       const transformedUser: User = {
@@ -112,11 +114,10 @@ export const AuthProvider = ({
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
-        avatar: `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1`,
-        points: 1250,
-        level: userData.role === "admin" ? "Admin" : "Gold Member",
+        avatar: userData.avatar,
+        points: userData.points,
+        level: userData.level,
       };
-
       setUser(transformedUser);
     } catch (error) {
       throw error;
@@ -125,11 +126,12 @@ export const AuthProvider = ({
 
   const register = async (userData: RegisterData) => {
     try {
-      const response = await apiService.register(userData);
-
+      const response = (await apiService.register(userData)) as {
+        user: User;
+        token: string;
+      };
       // Set token
       apiService.setToken(response.token);
-
       // Transform user data
       const user = response.user;
       const transformedUser: User = {
@@ -137,12 +139,11 @@ export const AuthProvider = ({
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
-        role: "user",
-        avatar: `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1`,
-        points: 0,
-        level: "New Member",
+        role: user.role,
+        avatar: user.avatar,
+        points: user.points,
+        level: user.level,
       };
-
       setUser(transformedUser);
     } catch (error) {
       throw error;
@@ -156,9 +157,12 @@ export const AuthProvider = ({
   };
 
   const updateProfile = async (updates: any) => {
-    await authService.updateProfile(updates);
-    const currentUser = await authService.getCurrentUser();
-    setUser(currentUser);
+    try {
+      const updatedUser = (await apiService.updateUserProfile(updates)) as User;
+      setUser((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser));
+    } catch (error) {
+      throw error;
+    }
   };
 
   const requireAuth = (action: () => void) => {
@@ -184,8 +188,8 @@ export const AuthProvider = ({
     login,
     register,
     logout,
-    updateProfile,
     requireAuth,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -15,6 +15,7 @@ interface HeaderProps {
   onNotificationsClick: () => void;
   onProfileClick: () => void;
   onLogout: () => void;
+  onSearchSubmit?: () => void; // Thêm prop này
 }
 
 export const Header = ({
@@ -27,7 +28,8 @@ export const Header = ({
   onWishlistClick,
   onNotificationsClick,
   onProfileClick,
-  onLogout
+  onLogout,
+  onSearchSubmit // Nhận prop này
 }: HeaderProps) => {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -49,6 +51,11 @@ export const Header = ({
                 placeholder="Tìm kiếm quà tặng..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && onSearchSubmit) {
+                    onSearchSubmit();
+                  }
+                }}
                 className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-[#49bbbd] focus:ring-[#49bbbd]"
               />
             </div>

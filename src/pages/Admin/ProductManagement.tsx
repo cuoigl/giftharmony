@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Plus, Search, Filter, Edit, Trash2, Eye, Upload, Download, Package, AlertTriangle } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { useToast } from '../../components/ui/toast';
+import React, { useState } from "react";
+import {
+  ArrowLeft,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  Eye,
+  Upload,
+  Download,
+  Package,
+  AlertTriangle,
+} from "lucide-react";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { useToast } from "../../components/ui/toast";
+import { apiService } from "../../services/api";
 
 interface ProductManagementProps {
   onBack: () => void;
@@ -15,11 +33,14 @@ interface Product {
   category: string;
   price: number;
   stock: number;
-  status: 'active' | 'inactive' | 'out_of_stock';
+  status: "active" | "inactive" | "out_of_stock";
   image: string;
   created: string;
   sku: string;
   description: string;
+  image_url?: string; // Thêm trường này để fix lỗi mapping FE/BE
+  category_id?: number; // Thêm nếu cần mapping với backend
+  stock_quantity?: number; // Thêm nếu cần mapping với backend
 }
 
 interface ProductForm {
@@ -29,120 +50,101 @@ interface ProductForm {
   stock: string;
   description: string;
   image: string;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
 }
 
-export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Element => {
+export const ProductManagement = ({
+  onBack,
+}: ProductManagementProps): JSX.Element => {
   const { addToast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<ProductForm>({
-    name: '',
-    category: 'Hoa tươi',
-    price: '',
-    stock: '',
-    description: '',
-    image: '',
-    status: 'active'
+    name: "",
+    category: "Hoa tươi",
+    price: "",
+    stock: "",
+    description: "",
+    image: "",
+    status: "active",
   });
 
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: 1,
-      name: 'Hoa hồng đỏ cao cấp',
-      category: 'Hoa tươi',
-      price: 299000,
-      stock: 15,
-      status: 'active',
-      image: 'https://images.pexels.com/photos/56866/garden-rose-red-pink-56866.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      created: '15/01/2025',
-      sku: 'FL001',
-      description: 'Bó hoa hồng đỏ cao cấp được tuyển chọn từ những bông hoa tươi nhất'
-    },
-    {
-      id: 2,
-      name: 'Đồng hồ thông minh',
-      category: 'Công nghệ',
-      price: 2999000,
-      stock: 5,
-      status: 'active',
-      image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      created: '14/01/2025',
-      sku: 'TC001',
-      description: 'Đồng hồ thông minh với nhiều tính năng hiện đại'
-    },
-    {
-      id: 3,
-      name: 'Chocolate handmade',
-      category: 'Đồ ăn',
-      price: 450000,
-      stock: 0,
-      status: 'out_of_stock',
-      image: 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      created: '13/01/2025',
-      sku: 'FD001',
-      description: 'Chocolate handmade cao cấp với hương vị đậm đà'
-    },
-    {
-      id: 4,
-      name: 'Nước hoa nữ cao cấp',
-      category: 'Làm đẹp',
-      price: 1200000,
-      stock: 8,
-      status: 'active',
-      image: 'https://images.pexels.com/photos/1190829/pexels-photo-1190829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      created: '12/01/2025',
-      sku: 'BT001',
-      description: 'Nước hoa nữ cao cấp với hương thơm quyến rũ'
-    }
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
 
-  const categories = ['all', 'Hoa tươi', 'Công nghệ', 'Đồ ăn', 'Làm đẹp', 'Thời trang', 'Đồ trang sức'];
+  React.useEffect(() => {
+    // Lấy danh sách sản phẩm từ backend khi load trang
+    const fetchProducts = async () => {
+      try {
+        const data = await apiService.getProducts();
+        setProducts(Array.isArray(data) ? data : data.products || []);
+      } catch (error: any) {
+        addToast({
+          type: "error",
+          title: "Lỗi tải sản phẩm",
+          description: error.message || "Không thể tải danh sách sản phẩm",
+          duration: 3000,
+        });
+      }
+    };
+    fetchProducts();
+  }, []);
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+  const categories = [
+    "all",
+    "Hoa tươi",
+    "Công nghệ",
+    "Đồ ăn",
+    "Làm đẹp",
+    "Thời trang",
+    "Đồ trang sức",
+  ];
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+    return new Intl.NumberFormat("vi-VN").format(price) + "đ";
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-800';
-      case 'out_of_stock':
-        return 'bg-red-100 text-red-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
+      case "out_of_stock":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'Hoạt động';
-      case 'inactive':
-        return 'Tạm dừng';
-      case 'out_of_stock':
-        return 'Hết hàng';
+      case "active":
+        return "Hoạt động";
+      case "inactive":
+        return "Tạm dừng";
+      case "out_of_stock":
+        return "Hết hàng";
       default:
-        return 'Không xác định';
+        return "Không xác định";
     }
   };
 
   const handleSelectProduct = (productId: number) => {
-    setSelectedProducts(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
+    setSelectedProducts((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
         : [...prev, productId]
     );
   };
@@ -151,17 +153,17 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
     if (selectedProducts.length === filteredProducts.length) {
       setSelectedProducts([]);
     } else {
-      setSelectedProducts(filteredProducts.map(p => p.id));
+      setSelectedProducts(filteredProducts.map((p) => p.id));
     }
   };
 
   const handleDeleteSelected = () => {
-    setProducts(prev => prev.filter(p => !selectedProducts.includes(p.id)));
+    setProducts((prev) => prev.filter((p) => !selectedProducts.includes(p.id)));
     addToast({
-      type: 'success',
-      title: 'Đã xóa sản phẩm',
+      type: "success",
+      title: "Đã xóa sản phẩm",
       description: `${selectedProducts.length} sản phẩm đã được xóa`,
-      duration: 3000
+      duration: 3000,
     });
     setSelectedProducts([]);
   };
@@ -171,34 +173,44 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
     setFormData({
       name: product.name,
       category: product.category,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
+      price: (product.price ?? product.stock_quantity ?? 0).toString(),
+      stock: (product.stock ?? product.stock_quantity ?? 0).toString(),
       description: product.description,
-      image: product.image,
-      status: product.status === 'out_of_stock' ? 'active' : product.status
+      image: product.image || product.image_url || "",
+      status: product.status === "out_of_stock" ? "active" : product.status,
     });
     setShowAddModal(true);
   };
 
-  const handleDeleteProduct = (productId: number) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
-    addToast({
-      type: 'success',
-      title: 'Đã xóa sản phẩm',
-      description: `Sản phẩm #${productId} đã được xóa`,
-      duration: 3000
-    });
+  const handleDeleteProduct = async (productId: number) => {
+    try {
+      await apiService.deleteProduct(productId);
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+      addToast({
+        type: "success",
+        title: "Đã xóa sản phẩm",
+        description: `Sản phẩm #${productId} đã được xóa`,
+        duration: 3000,
+      });
+    } catch (error: any) {
+      addToast({
+        type: "error",
+        title: "Xóa thất bại",
+        description: error.message || "Có lỗi xảy ra khi xóa sản phẩm",
+        duration: 3000,
+      });
+    }
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.price || !formData.stock) {
       addToast({
-        type: 'error',
-        title: 'Thông tin chưa đầy đủ',
-        description: 'Vui lòng điền đầy đủ thông tin sản phẩm',
-        duration: 3000
+        type: "error",
+        title: "Thông tin chưa đầy đủ",
+        description: "Vui lòng điền đầy đủ thông tin sản phẩm",
+        duration: 3000,
       });
       return;
     }
@@ -207,51 +219,81 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
     const stock = parseInt(formData.stock);
 
     if (editingProduct) {
-      // Update existing product
-      setProducts(prev => prev.map(p => 
-        p.id === editingProduct.id 
-          ? {
-              ...p,
-              name: formData.name,
-              category: formData.category,
-              price,
-              stock,
-              description: formData.description,
-              image: formData.image || p.image,
-              status: stock === 0 ? 'out_of_stock' : formData.status
-            }
-          : p
-      ));
-      
-      addToast({
-        type: 'success',
-        title: 'Cập nhật thành công',
-        description: `Sản phẩm ${formData.name} đã được cập nhật`,
-        duration: 3000
-      });
+      // Update existing product trên backend
+      try {
+        await apiService.updateProduct(editingProduct.id, {
+          name: formData.name,
+          description: formData.description,
+          price,
+          category_id: getCategoryId(formData.category),
+          stock_quantity: stock,
+          image_url: formData.image || editingProduct.image,
+        });
+        // Sau khi update thành công, cập nhật lại danh sách sản phẩm (có thể gọi lại API getProducts hoặc cập nhật state như cũ)
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === editingProduct.id
+              ? {
+                  ...p,
+                  name: formData.name,
+                  description: formData.description,
+                  price,
+                  category_id: getCategoryId(formData.category),
+                  stock_quantity: stock,
+                  image_url: formData.image || p.image_url,
+                }
+              : p
+          )
+        );
+        addToast({
+          type: "success",
+          title: "Cập nhật thành công",
+          description: `Sản phẩm ${formData.name} đã được cập nhật`,
+          duration: 3000,
+        });
+      } catch (error: any) {
+        addToast({
+          type: "error",
+          title: "Cập nhật thất bại",
+          description: error.message || "Có lỗi xảy ra khi cập nhật sản phẩm",
+          duration: 3000,
+        });
+      }
     } else {
-      // Add new product
-      const newProduct: Product = {
-        id: Math.max(...products.map(p => p.id)) + 1,
-        name: formData.name,
-        category: formData.category,
-        price,
-        stock,
-        description: formData.description,
-        image: formData.image || 'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-        status: stock === 0 ? 'out_of_stock' : formData.status,
-        created: new Date().toLocaleDateString('vi-VN'),
-        sku: `SP${String(Math.max(...products.map(p => p.id)) + 1).padStart(3, '0')}`
-      };
-
-      setProducts(prev => [...prev, newProduct]);
-      
-      addToast({
-        type: 'success',
-        title: 'Thêm thành công',
-        description: `Sản phẩm ${formData.name} đã được thêm`,
-        duration: 3000
-      });
+      // Add new product lên backend
+      try {
+        // Map tên trường đúng với backend
+        await apiService.createProduct({
+          name: formData.name,
+          description: formData.description,
+          price,
+          category_id: getCategoryId(formData.category),
+          stock_quantity: stock,
+          image_url: formData.image || "https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1",
+        });
+        // Sau khi thêm thành công, gọi lại API lấy danh sách sản phẩm mới nhất
+        const data = await apiService.getProducts();
+        if (Array.isArray(data)) {
+          setProducts(data);
+        } else if (data && Array.isArray((data as any).products)) {
+          setProducts((data as any).products);
+        } else {
+          setProducts([]);
+        }
+        addToast({
+          type: "success",
+          title: "Thêm thành công",
+          description: `Sản phẩm ${formData.name} đã được thêm`,
+          duration: 3000,
+        });
+      } catch (error: any) {
+        addToast({
+          type: "error",
+          title: "Thêm thất bại",
+          description: error.message || "Có lỗi xảy ra khi thêm sản phẩm",
+          duration: 3000,
+        });
+      }
     }
 
     resetForm();
@@ -259,21 +301,34 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      category: 'Hoa tươi',
-      price: '',
-      stock: '',
-      description: '',
-      image: '',
-      status: 'active'
+      name: "",
+      category: "Hoa tươi",
+      price: "",
+      stock: "",
+      description: "",
+      image: "",
+      status: "active",
     });
     setEditingProduct(null);
     setShowAddModal(false);
   };
 
   const handleInputChange = (field: keyof ProductForm, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  // Helper: Lấy category_id từ tên danh mục
+  function getCategoryId(categoryName: string): number {
+    const map: Record<string, number> = {
+      "Hoa tươi": 1,
+      "Công nghệ": 2,
+      "Đồ ăn": 3,
+      "Làm đẹp": 4,
+      "Thời trang": 5,
+      "Đồ trang sức": 6,
+    };
+    return map[categoryName] || 1;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -297,7 +352,7 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                 <Download className="h-4 w-4 mr-2" />
                 Xuất Excel
               </Button>
-              <Button 
+              <Button
                 className="bg-[#49bbbd] hover:bg-[#3a9a9c] text-white"
                 onClick={() => setShowAddModal(true)}
               >
@@ -316,8 +371,12 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Tổng sản phẩm</p>
-                  <p className="text-2xl font-bold text-gray-900">{products.length}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Tổng sản phẩm
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {products.length}
+                  </p>
                 </div>
                 <Package className="h-8 w-8 text-blue-600" />
               </div>
@@ -327,9 +386,11 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Đang hoạt động</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Đang hoạt động
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
-                    {products.filter(p => p.status === 'active').length}
+                    {products.filter((p) => p.status === "active").length}
                   </p>
                 </div>
                 <Package className="h-8 w-8 text-green-600" />
@@ -342,7 +403,7 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                 <div>
                   <p className="text-sm font-medium text-gray-600">Hết hàng</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {products.filter(p => p.status === 'out_of_stock').length}
+                    {products.filter((p) => p.status === "out_of_stock").length}
                   </p>
                 </div>
                 <AlertTriangle className="h-8 w-8 text-red-600" />
@@ -353,9 +414,13 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Giá trị kho</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Giá trị kho
+                  </p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {formatPrice(products.reduce((sum, p) => sum + (p.price * p.stock), 0))}
+                    {formatPrice(
+                      products.reduce((sum, p) => sum + p.price * p.stock, 0)
+                    )}
                   </p>
                 </div>
                 <Package className="h-8 w-8 text-purple-600" />
@@ -378,27 +443,27 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                   className="pl-10"
                 />
               </div>
-              
+
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
               >
-                {categories.map(category => (
+                {categories.map((category) => (
                   <option key={category} value={category}>
-                    {category === 'all' ? 'Tất cả danh mục' : category}
+                    {category === "all" ? "Tất cả danh mục" : category}
                   </option>
                 ))}
               </select>
-              
+
               <Button variant="outline" className="flex items-center">
                 <Filter className="h-4 w-4 mr-2" />
                 Bộ lọc nâng cao
               </Button>
 
               {selectedProducts.length > 0 && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleDeleteSelected}
                   className="text-red-600 hover:text-red-700"
                 >
@@ -420,7 +485,10 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                  checked={
+                    selectedProducts.length === filteredProducts.length &&
+                    filteredProducts.length > 0
+                  }
                   onChange={handleSelectAll}
                   className="mr-2"
                 />
@@ -433,18 +501,35 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Sản phẩm</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">SKU</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Danh mục</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Giá</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Tồn kho</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Trạng thái</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Thao tác</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      Sản phẩm
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      SKU
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      Danh mục
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      Giá
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      Tồn kho
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      Trạng thái
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={product.id}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-3">
                           <input
@@ -461,21 +546,43 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                             />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
-                            <p className="text-sm text-gray-500">ID: {product.id}</p>
+                            <p className="font-medium text-gray-900">
+                              {product.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              ID: {product.id}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4 font-mono text-sm">{product.sku}</td>
-                      <td className="py-4 px-4 text-gray-600">{product.category}</td>
-                      <td className="py-4 px-4 font-medium text-gray-900">{formatPrice(product.price)}</td>
+                      <td className="py-4 px-4 font-mono text-sm">
+                        {product.sku}
+                      </td>
+                      <td className="py-4 px-4 text-gray-600">
+                        {product.category}
+                      </td>
+                      <td className="py-4 px-4 font-medium text-gray-900">
+                        {formatPrice(product.price)}
+                      </td>
                       <td className="py-4 px-4">
-                        <span className={`${product.stock > 5 ? 'text-green-600' : product.stock > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        <span
+                          className={`${
+                            product.stock > 5
+                              ? "text-green-600"
+                              : product.stock > 0
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
                           {product.stock}
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(product.status)}`}>
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
+                            product.status
+                          )}`}
+                        >
                           {getStatusText(product.status)}
                         </span>
                       </td>
@@ -484,15 +591,15 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                           <Button size="sm" variant="ghost">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="ghost"
                             onClick={() => handleEditProduct(product)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="ghost"
                             onClick={() => handleDeleteProduct(product.id)}
                             className="text-red-500 hover:text-red-700"
@@ -520,9 +627,9 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h2 className="text-xl font-bold mb-4 font-['Poppins',Helvetica]">
-                {editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
+                {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
               </h2>
-              
+
               <form onSubmit={handleSubmitForm} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -531,24 +638,30 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                     </label>
                     <Input
                       value={formData.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
                       placeholder="Nhập tên sản phẩm"
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Danh mục *
                     </label>
                     <select
                       value={formData.category}
-                      onChange={(e) => handleInputChange('category', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("category", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                       required
                     >
-                      {categories.slice(1).map(category => (
-                        <option key={category} value={category}>{category}</option>
+                      {categories.slice(1).map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -562,12 +675,14 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                     <Input
                       type="number"
                       value={formData.price}
-                      onChange={(e) => handleInputChange('price', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("price", e.target.value)
+                      }
                       placeholder="Nhập giá sản phẩm"
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Số lượng tồn kho *
@@ -575,7 +690,9 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                     <Input
                       type="number"
                       value={formData.stock}
-                      onChange={(e) => handleInputChange('stock', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("stock", e.target.value)
+                      }
                       placeholder="Nhập số lượng"
                       required
                     />
@@ -588,7 +705,7 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                   </label>
                   <Input
                     value={formData.image}
-                    onChange={(e) => handleInputChange('image', e.target.value)}
+                    onChange={(e) => handleInputChange("image", e.target.value)}
                     placeholder="Nhập URL hình ảnh sản phẩm"
                   />
                 </div>
@@ -599,7 +716,9 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
                     placeholder="Nhập mô tả sản phẩm..."
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
@@ -612,7 +731,9 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                   </label>
                   <select
                     value={formData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("status", e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                   >
                     <option value="active">Hoạt động</option>
@@ -625,13 +746,9 @@ export const ProductManagement = ({ onBack }: ProductManagementProps): JSX.Eleme
                     type="submit"
                     className="bg-[#49bbbd] hover:bg-[#3a9a9c] text-white"
                   >
-                    {editingProduct ? 'Cập nhật' : 'Thêm sản phẩm'}
+                    {editingProduct ? "Cập nhật" : "Thêm sản phẩm"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetForm}
-                  >
+                  <Button type="button" variant="outline" onClick={resetForm}>
                     Hủy
                   </Button>
                 </div>

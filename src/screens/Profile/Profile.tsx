@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Mail, Phone, MapPin, Calendar, Star, Package, Heart, Settings, Edit3, Camera } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface ProfileProps {
   onBack: () => void;
@@ -25,54 +26,81 @@ interface UserProfile {
   gender: string;
 }
 
+// Tạm mở rộng type User cho FE nếu backend chưa trả về đủ
+interface User {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  avatar?: string;
+  points?: number;
+  level?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  district?: string;
+  ward?: string;
+  birthDate?: string;
+  gender?: string;
+}
+
 export const Profile = ({ onBack, onViewSettings, onViewOrderHistory, onViewWishlist }: ProfileProps): JSX.Element => {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { addToast } = useToast();
   
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
-    fullName: user?.name || '',
+    fullName: user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '',
     email: user?.email || '',
-    phone: '0901234567',
-    address: '123 Nguyễn Văn Linh',
-    city: 'TP. Hồ Chí Minh',
-    district: 'Quận 7',
-    ward: 'Phường Tân Phú',
-    birthDate: '1990-01-01',
-    gender: 'Nam'
+    phone: user?.phone || '',
+    address: user?.address || '',
+    city: user?.city || '',
+    district: user?.district || '',
+    ward: user?.ward || '',
+    birthDate: user?.birthDate || '',
+    gender: user?.gender || ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setOrdersLoading(true);
+      try {
+        const response = await apiService.getOrders();
+        // Đảm bảo response là mảng đơn hàng đúng format backend trả về
+        const ordersArray = Array.isArray(response) ? response : (Array.isArray(response?.orders) ? response.orders : []);
+        const statusMap: Record<string, string> = {
+          pending: 'Đang xử lý',
+          shipped: 'Đang giao',
+          delivered: 'Đã giao',
+          cancelled: 'Đã hủy',
+        };
+        const mapped = ordersArray.map((order: any) => ({
+          id: String(order.id),
+          date: order.created_at || order.date || '',
+          total: order.total_amount || order.total || 0,
+          status: statusMap[order.status] || order.status || '',
+          items: (order.items || []).map((item: any) => `${item.product_name || item.name} x${item.quantity}`).join(', ')
+        }));
+        setRecentOrders(mapped.slice(0, 3));
+      } catch (e) {
+        setRecentOrders([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   const stats = [
     { label: 'Đơn hàng', value: '24', icon: <Package className="h-5 w-5" />, onClick: onViewOrderHistory },
     { label: 'Yêu thích', value: '12', icon: <Heart className="h-5 w-5" />, onClick: onViewWishlist },
     { label: 'Điểm tích lũy', value: user?.points?.toLocaleString() || '0', icon: <Star className="h-5 w-5" /> },
     { label: 'Thành viên từ', value: '2024', icon: <Calendar className="h-5 w-5" /> }
-  ];
-
-  const recentOrders = [
-    {
-      id: 'GH123456',
-      date: '15/01/2025',
-      total: '299.000đ',
-      status: 'Đã giao',
-      items: 'Hoa hồng đỏ cao cấp'
-    },
-    {
-      id: 'GH123455',
-      date: '10/01/2025',
-      total: '2.999.000đ',
-      status: 'Đang giao',
-      items: 'Đồng hồ thông minh'
-    },
-    {
-      id: 'GH123454',
-      date: '05/01/2025',
-      total: '450.000đ',
-      status: 'Đã giao',
-      items: 'Chocolate handmade'
-    }
   ];
 
   const validateForm = () => {
@@ -105,35 +133,44 @@ export const Profile = ({ onBack, onViewSettings, onViewOrderHistory, onViewWish
     }
   };
 
-  const handleSave = () => {
-    if (validateForm()) {
-      // Simulate API call
-      setTimeout(() => {
-        setIsEditing(false);
-        addToast({
-          type: 'success',
-          title: 'Cập nhật thành công',
-          description: 'Thông tin cá nhân đã được cập nhật',
-          duration: 3000
+  const handleSave = async () => {
+    setErrors({});
+    if (!validateForm()) return;
+    try {
+      if (updateProfile) {
+        await updateProfile({
+          first_name: profile.fullName.split(' ')[0] || '',
+          last_name: profile.fullName.split(' ').slice(1).join(' ') || '',
+          phone: profile.phone,
+          address: profile.address,
+          city: profile.city,
+          district: profile.district,
+          ward: profile.ward,
+          birthDate: profile.birthDate,
+          gender: profile.gender
         });
-      }, 500);
+      }
+      // Sau khi cập nhật, nên reload lại user từ backend (nếu cần)
+      addToast({ title: 'Cập nhật thành công', type: 'success' });
+      setIsEditing(false);
+    } catch (error) {
+      addToast({ title: 'Cập nhật thất bại', type: 'error' });
     }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setErrors({});
-    // Reset form to original values
     setProfile({
-      fullName: user?.name || '',
+      fullName: user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : '',
       email: user?.email || '',
-      phone: '0901234567',
-      address: '123 Nguyễn Văn Linh',
-      city: 'TP. Hồ Chí Minh',
-      district: 'Quận 7',
-      ward: 'Phường Tân Phú',
-      birthDate: '1990-01-01',
-      gender: 'Nam'
+      phone: user?.phone || '',
+      address: user?.address || '',
+      city: user?.city || '',
+      district: user?.district || '',
+      ward: user?.ward || '',
+      birthDate: user?.birthDate || '',
+      gender: user?.gender || ''
     });
   };
 
@@ -145,6 +182,8 @@ export const Profile = ({ onBack, onViewSettings, onViewOrderHistory, onViewWish
         return 'bg-blue-100 text-blue-800';
       case 'Đang xử lý':
         return 'bg-yellow-100 text-yellow-800';
+      case 'Đã hủy':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -183,7 +222,7 @@ export const Profile = ({ onBack, onViewSettings, onViewOrderHistory, onViewWish
                     <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
                       <img
                         src={user?.avatar}
-                        alt={user?.name}
+                        alt={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : ''}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -197,7 +236,7 @@ export const Profile = ({ onBack, onViewSettings, onViewOrderHistory, onViewWish
                   </div>
                   <div className="flex-1">
                     <h2 className="text-2xl font-bold text-gray-900 font-['Poppins',Helvetica]">
-                      {user?.name}
+                      {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : ''}
                     </h2>
                     <p className="text-gray-600">{user?.email}</p>
                     <div className="flex items-center mt-2">
@@ -385,23 +424,29 @@ export const Profile = ({ onBack, onViewSettings, onViewOrderHistory, onViewWish
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">#{order.id}</h4>
-                          <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>
-                            {order.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-1">{order.items}</p>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">{order.date}</span>
-                          <span className="font-medium text-[#49bbbd]">{order.total}</span>
+                  {ordersLoading ? (
+                    <div className="text-center text-gray-500 py-8">Đang tải...</div>
+                  ) : recentOrders.length === 0 ? (
+                    <div className="text-center text-gray-500 py-8">Chưa có đơn hàng nào</div>
+                  ) : (
+                    recentOrders.map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-gray-900">Mã đơn: <span className="text-[#49bbbd] font-bold">#{order.id}</span></h4>
+                              <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>{order.status}</span>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">{order.items}</p>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">{order.date ? new Date(order.date).toLocaleDateString('vi-VN') : ''}</span>
+                            <span className="font-medium text-[#49bbbd]">{order.total?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <Button 
                   variant="outline" 

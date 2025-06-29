@@ -1,10 +1,19 @@
 export interface User {
   id: number;
-  name: string;
   email: string;
-  avatar: string;
-  points: number;
-  level: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  avatar?: string;
+  points?: number;
+  level?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  district?: string;
+  ward?: string;
+  birthDate?: string;
+  gender?: string;
 }
 
 export interface CartItem {
