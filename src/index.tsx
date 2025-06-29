@@ -54,18 +54,28 @@ function ProductDetailWrapper(props: any) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // Điều hướng sau đăng nhập
   const handleLoginSuccess = () => {
-    // Lấy user mới nhất từ localStorage (sau khi login hoặc loadCurrentUser)
-    const currentUser = JSON.parse(localStorage.getItem("user") || "null");
-    if (currentUser && currentUser.role === "admin") {
-      navigate("/admin/dashboard", { replace: true });
-    } else {
-      navigate("/dashboard", { replace: true });
-    }
+    // Đợi một chút để user context được cập nhật
+    setTimeout(() => {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+      console.log("Login success - user from localStorage:", currentUser);
+      console.log("Login success - user from context:", user);
+      
+      // Ưu tiên user từ context, fallback về localStorage
+      const userToCheck = user || currentUser;
+      
+      if (userToCheck && userToCheck.role === "admin") {
+        console.log("Redirecting to admin dashboard");
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        console.log("Redirecting to user dashboard");
+        navigate("/dashboard", { replace: true });
+      }
+    }, 100);
   };
 
   // Điều hướng sau đăng xuất
