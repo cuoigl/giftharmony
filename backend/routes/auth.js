@@ -106,8 +106,21 @@ router.post("/login", validateRequest(schemas.login), async (req, res) => {
 });
 
 // Get current user
-router.get("/me", authenticateToken, (req, res) => {
-  res.json({ user: req.user });
+router.get("/me", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, email, first_name, last_name, role, phone, address, city, district, ward, birthdate, gender FROM users WHERE id = $1 AND is_active = true`,
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const user = result.rows[0];
+    res.json({ user });
+  } catch (error) {
+    console.error("/me error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 module.exports = router;

@@ -23,6 +23,7 @@ interface User {
   ward?: string;
   birthDate?: string;
   gender?: string;
+  created_at?: string;
 }
 
 interface AuthContextType {
@@ -34,6 +35,7 @@ interface AuthContextType {
   logout: () => void;
   requireAuth: (action: () => void) => void;
   updateProfile?: (updates: any) => Promise<void>;
+  loadCurrentUser?: () => Promise<void>;
 }
 
 interface RegisterData {
@@ -89,6 +91,14 @@ export const AuthProvider = ({
         avatar: userData.avatar,
         points: userData.points,
         level: userData.level,
+        phone: userData.phone,
+        address: userData.address,
+        city: userData.city,
+        district: userData.district,
+        ward: userData.ward,
+        birthDate: (userData as any).birthdate || userData.birthDate,
+        gender: userData.gender,
+        created_at: (userData as any).created_at || undefined,
       };
       setUser(transformedUser);
       setIsLoading(false);
@@ -117,6 +127,14 @@ export const AuthProvider = ({
         avatar: userData.avatar,
         points: userData.points,
         level: userData.level,
+        phone: userData.phone,
+        address: userData.address,
+        city: userData.city,
+        district: userData.district,
+        ward: userData.ward,
+        birthDate: (userData as any).birthdate || userData.birthDate,
+        gender: userData.gender,
+        created_at: (userData as any).created_at || undefined,
       };
       setUser(transformedUser);
     } catch (error) {
@@ -143,6 +161,14 @@ export const AuthProvider = ({
         avatar: user.avatar,
         points: user.points,
         level: user.level,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        district: user.district,
+        ward: user.ward,
+        birthDate: (user as any).birthdate || user.birthDate,
+        gender: user.gender,
+        created_at: (user as any).created_at || undefined,
       };
       setUser(transformedUser);
     } catch (error) {
@@ -158,8 +184,8 @@ export const AuthProvider = ({
 
   const updateProfile = async (updates: any) => {
     try {
-      const updatedUser = (await apiService.updateUserProfile(updates)) as User;
-      setUser((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser));
+      await apiService.updateUserProfile(updates);
+      await loadCurrentUser(); // luôn reload lại user từ backend sau khi cập nhật
     } catch (error) {
       throw error;
     }
@@ -190,6 +216,7 @@ export const AuthProvider = ({
     logout,
     requireAuth,
     updateProfile,
+    loadCurrentUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

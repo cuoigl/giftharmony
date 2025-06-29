@@ -14,6 +14,7 @@ export interface User {
   ward?: string;
   birthDate?: string;
   gender?: string;
+  created_at?: string; // Thêm trường ngày tạo tài khoản
 }
 
 export interface CartItem {

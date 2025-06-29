@@ -1,8 +1,9 @@
 import React from 'react';
-import { Search, Bell, Heart, ShoppingCart, LogOut } from 'lucide-react';
+import { Search, Bell, Heart, ShoppingCart, LogOut, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { User } from '../../types';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface HeaderProps {
   user?: User | null;
@@ -31,6 +32,7 @@ export const Header = ({
   onLogout,
   onSearchSubmit // Nhận prop này
 }: HeaderProps) => {
+  const { unreadCount } = useNotification();
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,9 +72,11 @@ export const Header = ({
               onClick={onNotificationsClick}
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                3
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </Button>
             
             <Button 
@@ -109,12 +113,16 @@ export const Header = ({
                   onClick={onProfileClick}
                   className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg p-2 transition-colors"
                 >
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                  <span className="text-sm font-medium text-gray-700">{user.name}</span>
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={`${user.first_name || ''} ${user.last_name || ''}`.trim()}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserIcon className="h-8 w-8 text-gray-400 bg-gray-100 rounded-full p-1" />
+                  )}
+                  <span className="text-sm font-medium text-gray-700">{`${user.first_name || ''} ${user.last_name || ''}`.trim()}</span>
                 </button>
                 <Button
                   variant="ghost"

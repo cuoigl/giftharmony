@@ -7,9 +7,8 @@ const router = express.Router();
 // Get user orders
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    console.log('API /orders called by user:', req.user.id);
     const result = await pool.query(
-      `SELECT o.*, 
+      `SELECT o.*, u.email, u.first_name, u.last_name, u.phone,
        json_agg(
          json_build_object(
            'product_id', oi.product_id,
@@ -19,14 +18,15 @@ router.get('/', authenticateToken, async (req, res) => {
          )
        ) as items
        FROM orders o
+       JOIN users u ON o.user_id = u.id
        LEFT JOIN order_items oi ON o.id = oi.order_id
        LEFT JOIN products p ON oi.product_id = p.id
        WHERE o.user_id = $1
-       GROUP BY o.id
+       GROUP BY o.id, u.email, u.first_name, u.last_name, u.phone
        ORDER BY o.created_at DESC`,
       [req.user.id]
     );
-    console.log('Orders result:', JSON.stringify(result.rows, null, 2));
+
     res.json(result.rows);
   } catch (error) {
     console.error('Get orders error:', error);

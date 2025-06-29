@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Package, Search, Filter, Eye, RotateCcw, MessageCircle, X, MapPin, User, Phone, Mail, Calendar, Truck, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Package, Search, Filter, Eye, RotateCcw, MessageCircle, X, MapPin, User, Phone, Mail, Truck, CheckCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/common';
 import { useToast } from '../../components/ui/toast';
 import { formatPrice, getStatusColor } from '../../utils/formatters';
 import { apiService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface OrderHistoryProps {
   onBack: () => void;
@@ -43,6 +44,7 @@ interface Order {
 
 export const OrderHistory = ({ onBack, onViewOrderDetail }: OrderHistoryProps): JSX.Element => {
   const { addToast } = useToast();
+  const { user } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,36 +55,53 @@ export const OrderHistory = ({ onBack, onViewOrderDetail }: OrderHistoryProps): 
       try {
         const response = await apiService.getOrders();
         setOrders(
-          (response || []).map((order: any) => ({
-            id: String(order.id), // Đảm bảo luôn là string để tránh lỗi .toLowerCase()
-            date: order.created_at || order.date || '',
-            items: (order.items || []).map((item: any) => ({
-              id: item.product_id,
-              name: item.product_name,
-              image: '', // Có thể lấy từ DB nếu muốn
-              quantity: item.quantity,
-              price: item.price
-            })),
-            total: order.total_amount,
-            status: order.status || 'Đang xử lý',
-            shippingAddress: order.shipping_address,
-            paymentMethod: order.payment_method || 'COD',
-            trackingNumber: order.tracking_number || '',
-            customer: { name: '', email: '', phone: '' },
-            shippingFee: order.shipping_fee || 0,
-            discount: order.discount || 0,
-            notes: order.notes || '',
-            deliveryDate: order.delivery_date || ''
-          }))
+          (Array.isArray(response) ? response : []).map((order: any) => {
+            // Lấy thông tin khách hàng từ response nếu có, fallback từ user context
+            let customer = { name: '', email: '', phone: '' };
+            if (order.first_name || order.last_name || order.email || order.phone) {
+              customer = {
+                name: `${order.first_name || ''} ${order.last_name || ''}`.trim(),
+                email: order.email || '',
+                phone: order.phone || ''
+              };
+            } else if (user) {
+              customer = {
+                name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+                email: user.email || '',
+                phone: user.phone || ''
+              };
+            }
+            return {
+              id: String(order.id),
+              date: order.created_at || order.date || '',
+              items: (order.items || []).map((item: any) => ({
+                id: item.product_id,
+                name: item.product_name,
+                image: '',
+                quantity: item.quantity,
+                price: item.price
+              })),
+              total: order.total_amount,
+              status: order.status || 'Đang xử lý',
+              shippingAddress: order.shipping_address,
+              paymentMethod: order.payment_method || 'COD',
+              trackingNumber: order.tracking_number || '',
+              customer,
+              shippingFee: order.shipping_fee || 0,
+              discount: order.discount || 0,
+              notes: order.notes || '',
+              deliveryDate: order.delivery_date || ''
+            };
+          })
         );
       } catch (error) {
-        addToast({ title: 'Lỗi', description: 'Không thể tải lịch sử đơn hàng', variant: 'destructive' });
+        addToast({ title: 'Lỗi', description: 'Không thể tải lịch sử đơn hàng', type: 'error' });
       } finally {
         setIsLoading(false);
       }
     };
     fetchOrders();
-  }, []);
+  }, [user]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');

@@ -1,14 +1,13 @@
 import * as React from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { Outlet } from "react-router-dom";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
   requireAdmin?: boolean;
   fallback?: React.ReactNode;
 }
 
 export const ProtectedRoute = ({
-  children,
   requireAdmin = false,
   fallback = null,
 }: ProtectedRouteProps) => {
@@ -20,5 +19,5 @@ export const ProtectedRoute = ({
   if (requireAdmin && user.role !== "admin") {
     return fallback;
   }
-  return <>{children}</>;
+  return <Outlet />;
 };

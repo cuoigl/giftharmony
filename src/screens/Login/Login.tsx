@@ -48,7 +48,7 @@ export const Login = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { login, register } = useAuth();
+  const { login, register, loadCurrentUser } = useAuth();
   const { addToast } = useToast();
 
   const validateLoginForm = () => {
@@ -108,18 +108,14 @@ export const Login = ({
     setIsLoading(true);
     try {
       await login(loginForm.email, loginForm.password);
-
+      await loadCurrentUser?.();
       addToast({
         type: "success",
         title: "Đăng nhập thành công",
         description: "Chào mừng bạn quay trở lại!",
         duration: 3000,
       });
-
-      // Check if admin login
-      if (loginForm.email === "admin@example.com" && onAdminLogin) {
-        onAdminLogin();
-      } else if (onLoginSuccess) {
+      if (onLoginSuccess) {
         onLoginSuccess();
       }
     } catch (error: any) {
@@ -236,7 +232,7 @@ export const Login = ({
                         onChange={(e) =>
                           setLoginForm({ ...loginForm, email: e.target.value })
                         }
-                        placeholder="Nhập email (admin@example.com để vào quản lý)"
+                        placeholder="Nhập email của bạn"
                         className={`h-[54px] rounded-[40px] border-[#49bbbd] pl-[30px] font-['Poppins',Helvetica] font-light text-[#acacac] text-[15px] w-full ${
                           errors.email ? "border-red-500" : ""
                         }`}
@@ -263,7 +259,7 @@ export const Login = ({
                               password: e.target.value,
                             })
                           }
-                          placeholder="Nhập mật khẩu (admin123 để vào quản lý)"
+                          placeholder="Nhập mật khẩu"
                           className={`h-[54px] rounded-[40px] border-[#49bbbd] pl-[30px] pr-[50px] font-['Poppins',Helvetica] font-light text-[#acacac] text-[15px] w-full ${
                             errors.password ? "border-red-500" : ""
                           }`}
@@ -326,13 +322,6 @@ export const Login = ({
                   >
                     {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                   </Button>
-
-                  <div className="text-center mt-4">
-                    <p className="text-sm text-gray-600">
-                      Tài khoản quản lý: <strong>admin@example.com</strong> /{" "}
-                      <strong>admin123</strong>
-                    </p>
-                  </div>
                 </form>
               </TabsContent>
 

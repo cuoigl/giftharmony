@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/profile", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, email, first_name, last_name, phone, created_at FROM users WHERE id = $1",
+      `SELECT id, email, first_name, last_name, phone, address, city, district, ward, birthDate, gender, avatar, points, level, created_at FROM users WHERE id = $1`,
       [req.user.id]
     );
 
@@ -36,12 +36,23 @@ router.put("/profile", authenticateToken, async (req, res) => {
       district,
       ward,
       birthDate,
-      gender
+      gender,
     } = req.body;
 
     const result = await pool.query(
       `UPDATE users SET first_name = $1, last_name = $2, phone = $3, address = $4, city = $5, district = $6, ward = $7, birthDate = $8, gender = $9, updated_at = CURRENT_TIMESTAMP WHERE id = $10 RETURNING *`,
-      [first_name, last_name, phone, address, city, district, ward, birthDate, gender, req.user.id]
+      [
+        first_name,
+        last_name,
+        phone,
+        address,
+        city,
+        district,
+        ward,
+        birthDate,
+        gender,
+        req.user.id,
+      ]
     );
 
     if (result.rows.length === 0) {
