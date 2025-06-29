@@ -1,6 +1,6 @@
 // backend/middleware/logger.js
 const logger = (req, res, next) => {
-  res.on('finish', () => {
+  res.on("finish", () => {
     console.log(`[${req.method}] ${req.originalUrl} - ${res.statusCode}`);
   });
   next();

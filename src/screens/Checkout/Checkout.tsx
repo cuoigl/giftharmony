@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
-import { ArrowLeft, CreditCard, MapPin, User, Phone, Mail, CheckCircle, Truck, Calendar } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { useCart } from '../../contexts/CartContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../components/ui/toast';
-import { apiService } from '../../services/api';
+import React, { useState } from "react";
+import {
+  ArrowLeft,
+  CreditCard,
+  MapPin,
+  User,
+  Phone,
+  Mail,
+  CheckCircle,
+  Truck,
+  Calendar,
+} from "lucide-react";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { useCart } from "../../contexts/CartContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../components/ui/toast";
+import { apiService } from "../../services/api";
 
 interface CheckoutProps {
   onBack: () => void;
@@ -31,101 +46,104 @@ interface PaymentMethod {
   icon: React.ReactNode;
 }
 
-export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Element => {
+export const Checkout = ({
+  onBack,
+  onOrderComplete,
+}: CheckoutProps): JSX.Element => {
   const { items, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const { addToast } = useToast();
 
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
-    fullName: user?.name || '',
-    phone: '',
-    email: user?.email || '',
-    address: '',
-    city: 'TP. Hồ Chí Minh',
-    district: '',
-    ward: '',
-    note: ''
+    fullName: user?.name || "",
+    phone: "",
+    email: user?.email || "",
+    address: "",
+    city: "TP. Hồ Chí Minh",
+    district: "",
+    ward: "",
+    note: "",
   });
 
-  const [selectedPayment, setSelectedPayment] = useState('cod');
-  const [selectedDelivery, setSelectedDelivery] = useState('standard');
+  const [selectedPayment, setSelectedPayment] = useState("cod");
+  const [selectedDelivery, setSelectedDelivery] = useState("standard");
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'cod',
-      name: 'Thanh toán khi nhận hàng (COD)',
-      description: 'Thanh toán bằng tiền mặt khi nhận hàng',
-      icon: <Truck className="h-5 w-5" />
+      id: "cod",
+      name: "Thanh toán khi nhận hàng (COD)",
+      description: "Thanh toán bằng tiền mặt khi nhận hàng",
+      icon: <Truck className="h-5 w-5" />,
     },
     {
-      id: 'bank',
-      name: 'Chuyển khoản ngân hàng',
-      description: 'Chuyển khoản qua Internet Banking',
-      icon: <CreditCard className="h-5 w-5" />
+      id: "bank",
+      name: "Chuyển khoản ngân hàng",
+      description: "Chuyển khoản qua Internet Banking",
+      icon: <CreditCard className="h-5 w-5" />,
     },
     {
-      id: 'momo',
-      name: 'Ví MoMo',
-      description: 'Thanh toán qua ví điện tử MoMo',
-      icon: <Phone className="h-5 w-5" />
-    }
+      id: "momo",
+      name: "Ví MoMo",
+      description: "Thanh toán qua ví điện tử MoMo",
+      icon: <Phone className="h-5 w-5" />,
+    },
   ];
 
   const deliveryOptions = [
     {
-      id: 'standard',
-      name: 'Giao hàng tiêu chuẩn',
-      time: '2-3 ngày làm việc',
+      id: "standard",
+      name: "Giao hàng tiêu chuẩn",
+      time: "2-3 ngày làm việc",
       price: 30000,
-      description: 'Giao hàng trong giờ hành chính'
+      description: "Giao hàng trong giờ hành chính",
     },
     {
-      id: 'express',
-      name: 'Giao hàng nhanh',
-      time: 'Trong ngày',
+      id: "express",
+      name: "Giao hàng nhanh",
+      time: "Trong ngày",
       price: 50000,
-      description: 'Giao hàng trong 4-6 giờ'
+      description: "Giao hàng trong 4-6 giờ",
     },
     {
-      id: 'premium',
-      name: 'Giao hàng cao cấp',
-      time: '2-4 giờ',
+      id: "premium",
+      name: "Giao hàng cao cấp",
+      time: "2-4 giờ",
       price: 100000,
-      description: 'Giao hàng ưu tiên, đóng gói sang trọng'
-    }
+      description: "Giao hàng ưu tiên, đóng gói sang trọng",
+    },
   ];
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!shippingInfo.fullName.trim()) {
-      newErrors.fullName = 'Vui lòng nhập họ tên';
+      newErrors.fullName = "Vui lòng nhập họ tên";
     }
 
     if (!shippingInfo.phone.trim()) {
-      newErrors.phone = 'Vui lòng nhập số điện thoại';
-    } else if (!/^[0-9]{10,11}$/.test(shippingInfo.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Số điện thoại không hợp lệ';
+      newErrors.phone = "Vui lòng nhập số điện thoại";
+    } else if (!/^[0-9]{10,11}$/.test(shippingInfo.phone.replace(/\s/g, ""))) {
+      newErrors.phone = "Số điện thoại không hợp lệ";
     }
 
     if (!shippingInfo.email.trim()) {
-      newErrors.email = 'Vui lòng nhập email';
+      newErrors.email = "Vui lòng nhập email";
     } else if (!/\S+@\S+\.\S+/.test(shippingInfo.email)) {
-      newErrors.email = 'Email không hợp lệ';
+      newErrors.email = "Email không hợp lệ";
     }
 
     if (!shippingInfo.address.trim()) {
-      newErrors.address = 'Vui lòng nhập địa chỉ';
+      newErrors.address = "Vui lòng nhập địa chỉ";
     }
 
     if (!shippingInfo.district.trim()) {
-      newErrors.district = 'Vui lòng chọn quận/huyện';
+      newErrors.district = "Vui lòng chọn quận/huyện";
     }
 
     if (!shippingInfo.ward.trim()) {
-      newErrors.ward = 'Vui lòng chọn phường/xã';
+      newErrors.ward = "Vui lòng chọn phường/xã";
     }
 
     setErrors(newErrors);
@@ -133,19 +151,19 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
   };
 
   const handleInputChange = (field: keyof ShippingInfo, value: string) => {
-    setShippingInfo(prev => ({ ...prev, [field]: value }));
+    setShippingInfo((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
   const handlePlaceOrder = async () => {
     if (!validateForm()) {
       addToast({
-        type: 'error',
-        title: 'Thông tin chưa đầy đủ',
-        description: 'Vui lòng kiểm tra và điền đầy đủ thông tin',
-        duration: 5000
+        type: "error",
+        title: "Thông tin chưa đầy đủ",
+        description: "Vui lòng kiểm tra và điền đầy đủ thông tin",
+        duration: 5000,
       });
       return;
     }
@@ -154,28 +172,32 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
 
     try {
       // Gọi API đặt hàng thực tế
-      const orderItems = items.map(item => ({ product_id: item.product_id ?? Number(item.id), quantity: item.quantity }));
+      const orderItems = items.map((item) => ({
+        product_id: item.product_id ?? Number(item.id),
+        quantity: item.quantity,
+      }));
       const shipping_address = `${shippingInfo.address}, ${shippingInfo.ward}, ${shippingInfo.district}, ${shippingInfo.city}`;
       await apiService.createOrder({
         items: orderItems,
-        shipping_address
+        shipping_address,
       });
 
       addToast({
-        type: 'success',
-        title: 'Đặt hàng thành công!',
-        description: 'Đơn hàng của bạn đã được ghi nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất.',
-        duration: 5000
+        type: "success",
+        title: "Đặt hàng thành công!",
+        description:
+          "Đơn hàng của bạn đã được ghi nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất.",
+        duration: 5000,
       });
 
       clearCart();
       onOrderComplete();
     } catch (error: any) {
       addToast({
-        type: 'error',
-        title: 'Đặt hàng thất bại',
-        description: error?.message || 'Có lỗi xảy ra, vui lòng thử lại sau',
-        duration: 5000
+        type: "error",
+        title: "Đặt hàng thất bại",
+        description: error?.message || "Có lỗi xảy ra, vui lòng thử lại sau",
+        duration: 5000,
       });
     } finally {
       setIsProcessing(false);
@@ -183,10 +205,12 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
+    return new Intl.NumberFormat("vi-VN").format(price) + "đ";
   };
 
-  const selectedDeliveryOption = deliveryOptions.find(option => option.id === selectedDelivery);
+  const selectedDeliveryOption = deliveryOptions.find(
+    (option) => option.id === selectedDelivery
+  );
   const subtotal = getTotalPrice();
   const shippingCost = selectedDeliveryOption?.price || 0;
   const total = subtotal + shippingCost;
@@ -232,12 +256,16 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     </label>
                     <Input
                       value={shippingInfo.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("fullName", e.target.value)
+                      }
                       placeholder="Nhập họ và tên"
-                      className={errors.fullName ? 'border-red-500' : ''}
+                      className={errors.fullName ? "border-red-500" : ""}
                     />
                     {errors.fullName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.fullName}
+                      </p>
                     )}
                   </div>
                   <div>
@@ -246,12 +274,16 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     </label>
                     <Input
                       value={shippingInfo.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("phone", e.target.value)
+                      }
                       placeholder="Nhập số điện thoại"
-                      className={errors.phone ? 'border-red-500' : ''}
+                      className={errors.phone ? "border-red-500" : ""}
                     />
                     {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.phone}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -263,9 +295,9 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                   <Input
                     type="email"
                     value={shippingInfo.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="Nhập địa chỉ email"
-                    className={errors.email ? 'border-red-500' : ''}
+                    className={errors.email ? "border-red-500" : ""}
                   />
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -279,7 +311,9 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     </label>
                     <select
                       value={shippingInfo.city}
-                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("city", e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                     >
                       <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
@@ -294,12 +328,16 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     </label>
                     <Input
                       value={shippingInfo.district}
-                      onChange={(e) => handleInputChange('district', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("district", e.target.value)
+                      }
                       placeholder="Chọn quận/huyện"
-                      className={errors.district ? 'border-red-500' : ''}
+                      className={errors.district ? "border-red-500" : ""}
                     />
                     {errors.district && (
-                      <p className="text-red-500 text-sm mt-1">{errors.district}</p>
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.district}
+                      </p>
                     )}
                   </div>
                   <div>
@@ -308,9 +346,11 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     </label>
                     <Input
                       value={shippingInfo.ward}
-                      onChange={(e) => handleInputChange('ward', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("ward", e.target.value)
+                      }
                       placeholder="Chọn phường/xã"
-                      className={errors.ward ? 'border-red-500' : ''}
+                      className={errors.ward ? "border-red-500" : ""}
                     />
                     {errors.ward && (
                       <p className="text-red-500 text-sm mt-1">{errors.ward}</p>
@@ -324,12 +364,16 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                   </label>
                   <Input
                     value={shippingInfo.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("address", e.target.value)
+                    }
                     placeholder="Số nhà, tên đường..."
-                    className={errors.address ? 'border-red-500' : ''}
+                    className={errors.address ? "border-red-500" : ""}
                   />
                   {errors.address && (
-                    <p className="text-red-500 text-sm mt-1">{errors.address}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.address}
+                    </p>
                   )}
                 </div>
 
@@ -339,7 +383,7 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                   </label>
                   <textarea
                     value={shippingInfo.note}
-                    onChange={(e) => handleInputChange('note', e.target.value)}
+                    onChange={(e) => handleInputChange("note", e.target.value)}
                     placeholder="Ghi chú cho đơn hàng..."
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
@@ -362,8 +406,8 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     key={option.id}
                     className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
                       selectedDelivery === option.id
-                        ? 'border-[#49bbbd] bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? "border-[#49bbbd] bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <div className="flex items-center">
@@ -376,9 +420,13 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                         className="mr-3"
                       />
                       <div>
-                        <p className="font-medium text-gray-900">{option.name}</p>
+                        <p className="font-medium text-gray-900">
+                          {option.name}
+                        </p>
                         <p className="text-sm text-gray-500">{option.time}</p>
-                        <p className="text-xs text-gray-400">{option.description}</p>
+                        <p className="text-xs text-gray-400">
+                          {option.description}
+                        </p>
                       </div>
                     </div>
                     <span className="font-medium text-gray-900">
@@ -403,8 +451,8 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     key={method.id}
                     className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
                       selectedPayment === method.id
-                        ? 'border-[#49bbbd] bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? "border-[#49bbbd] bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <input
@@ -418,8 +466,12 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     <div className="flex items-center">
                       <div className="mr-3 text-[#49bbbd]">{method.icon}</div>
                       <div>
-                        <p className="font-medium text-gray-900">{method.name}</p>
-                        <p className="text-sm text-gray-500">{method.description}</p>
+                        <p className="font-medium text-gray-900">
+                          {method.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {method.description}
+                        </p>
                       </div>
                     </div>
                   </label>
@@ -448,8 +500,12 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
-                      <p className="text-sm text-gray-500">Số lượng: {item.quantity}</p>
+                      <h4 className="font-medium text-gray-900 truncate">
+                        {item.name}
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        Số lượng: {item.quantity}
+                      </p>
                       <p className="font-medium text-[#49bbbd]">
                         {formatPrice(item.price * item.quantity)}
                       </p>
@@ -462,7 +518,9 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
             {/* Price Summary */}
             <Card>
               <CardHeader>
-                <CardTitle className="font-['Poppins',Helvetica]">Tóm tắt thanh toán</CardTitle>
+                <CardTitle className="font-['Poppins',Helvetica]">
+                  Tóm tắt thanh toán
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -470,16 +528,20 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     <span className="text-gray-600">Tạm tính:</span>
                     <span className="font-medium">{formatPrice(subtotal)}</span>
                   </div>
-                  
+
                   <div className="flex justify-between">
                     <span className="text-gray-600">Phí vận chuyển:</span>
-                    <span className="font-medium">{formatPrice(shippingCost)}</span>
+                    <span className="font-medium">
+                      {formatPrice(shippingCost)}
+                    </span>
                   </div>
-                  
+
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Tổng cộng:</span>
-                      <span className="text-[#49bbbd]">{formatPrice(total)}</span>
+                      <span className="text-[#49bbbd]">
+                        {formatPrice(total)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -505,9 +567,13 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                 <div className="text-xs text-gray-500 text-center">
                   <p>Bằng việc đặt hàng, bạn đồng ý với</p>
                   <p>
-                    <button className="underline hover:text-gray-700">Điều khoản dịch vụ</button>
-                    {' và '}
-                    <button className="underline hover:text-gray-700">Chính sách bảo mật</button>
+                    <button className="underline hover:text-gray-700">
+                      Điều khoản dịch vụ
+                    </button>
+                    {" và "}
+                    <button className="underline hover:text-gray-700">
+                      Chính sách bảo mật
+                    </button>
                   </p>
                 </div>
               </CardContent>
@@ -527,7 +593,9 @@ export const Checkout = ({ onBack, onOrderComplete }: CheckoutProps): JSX.Elemen
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-2">
                       <CreditCard className="h-4 w-4 text-blue-600" />
                     </div>
-                    <span className="text-xs text-gray-600">Thanh toán an toàn</span>
+                    <span className="text-xs text-gray-600">
+                      Thanh toán an toàn
+                    </span>
                   </div>
                 </div>
               </CardContent>

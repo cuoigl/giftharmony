@@ -269,7 +269,9 @@ export const ProductManagement = ({
           price,
           category_id: getCategoryId(formData.category),
           stock_quantity: stock,
-          image_url: formData.image || "https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1",
+          image_url:
+            formData.image ||
+            "https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1",
         });
         // Sau khi thêm thành công, gọi lại API lấy danh sách sản phẩm mới nhất
         const data = await apiService.getProducts();

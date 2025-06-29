@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 export interface Notification {
   id: number;
-  type: 'order' | 'promotion' | 'reminder' | 'system';
+  type: "order" | "promotion" | "reminder" | "system";
   title: string;
   message: string;
   time: string;
@@ -23,11 +29,14 @@ interface NotificationContextType {
   unreadCount: number;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType | undefined>(
+  undefined
+);
 
 export const useNotification = () => {
   const ctx = useContext(NotificationContext);
-  if (!ctx) throw new Error('useNotification must be used within NotificationProvider');
+  if (!ctx)
+    throw new Error("useNotification must be used within NotificationProvider");
   return ctx;
 };
 
@@ -49,21 +58,34 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const markAsRead = (id: number) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
   };
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
   const deleteNotification = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
   const deleteAll = () => {
     setNotifications([]);
   };
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <NotificationContext.Provider value={{ notifications, setNotifications, loading, markAsRead, markAllAsRead, deleteNotification, deleteAll, unreadCount }}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        setNotifications,
+        loading,
+        markAsRead,
+        markAllAsRead,
+        deleteNotification,
+        deleteAll,
+        unreadCount,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );

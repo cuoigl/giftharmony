@@ -339,7 +339,7 @@ export const Profile = ({
                       {user?.avatar ? (
                         <img
                           src={user.avatar}
-                          alt={user.first_name || ''}
+                          alt={user.first_name || ""}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -422,7 +422,11 @@ export const Profile = ({
                         type="email"
                         value={profile.email}
                         disabled
-                        className={errors.email ? "border-red-500" : "bg-gray-100 cursor-not-allowed"}
+                        className={
+                          errors.email
+                            ? "border-red-500"
+                            : "bg-gray-100 cursor-not-allowed"
+                        }
                       />
                     ) : (
                       <p className="py-2 text-gray-900">{profile.email}</p>
@@ -463,7 +467,11 @@ export const Profile = ({
                     {isEditing ? (
                       <Input
                         type="date"
-                        value={profile.birthDate ? profile.birthDate.slice(0, 10) : ""}
+                        value={
+                          profile.birthDate
+                            ? profile.birthDate.slice(0, 10)
+                            : ""
+                        }
                         onChange={(e) =>
                           handleInputChange("birthDate", e.target.value)
                         }
@@ -471,7 +479,9 @@ export const Profile = ({
                     ) : (
                       <p className="py-2 text-gray-900">
                         {profile.birthDate
-                          ? new Date(profile.birthDate).toLocaleDateString("vi-VN")
+                          ? new Date(profile.birthDate).toLocaleDateString(
+                              "vi-VN"
+                            )
                           : ""}
                       </p>
                     )}
@@ -554,7 +564,8 @@ export const Profile = ({
                     </>
                   ) : (
                     <p className="py-2 text-gray-900">
-                      {profile.address}, {profile.ward}, {profile.district}, {profile.city}
+                      {profile.address}, {profile.ward}, {profile.district},{" "}
+                      {profile.city}
                     </p>
                   )}
                 </div>
@@ -595,14 +606,27 @@ export const Profile = ({
                     </div>
                   ) : (
                     recentOrders.map((order) => (
-                      <Card key={order.id} className="border border-gray-200 rounded-lg">
+                      <Card
+                        key={order.id}
+                        className="border border-gray-200 rounded-lg"
+                      >
                         <CardHeader className="pb-2 flex flex-row items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-900">Đơn hàng #{order.id}</span>
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>{order.status}</span>
+                            <span className="font-semibold text-gray-900">
+                              Đơn hàng #{order.id}
+                            </span>
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
+                                order.status
+                              )}`}
+                            >
+                              {order.status}
+                            </span>
                           </div>
                           <div className="text-sm text-gray-500">
-                            {order.date ? new Date(order.date).toLocaleDateString("vi-VN") : ""}
+                            {order.date
+                              ? new Date(order.date).toLocaleDateString("vi-VN")
+                              : ""}
                           </div>
                         </CardHeader>
                         <CardContent className="py-2 px-4">
@@ -610,8 +634,15 @@ export const Profile = ({
                             {order.items}
                           </div>
                           <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs text-gray-500">Tổng cộng:</span>
-                            <span className="font-semibold text-[#49bbbd]">{order.total?.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}</span>
+                            <span className="text-xs text-gray-500">
+                              Tổng cộng:
+                            </span>
+                            <span className="font-semibold text-[#49bbbd]">
+                              {order.total?.toLocaleString("vi-VN", {
+                                style: "currency",
+                                currency: "VND",
+                              })}
+                            </span>
                           </div>
                         </CardContent>
                       </Card>

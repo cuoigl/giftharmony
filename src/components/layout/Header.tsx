@@ -1,9 +1,16 @@
-import React from 'react';
-import { Search, Bell, Heart, ShoppingCart, LogOut, User as UserIcon } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { User } from '../../types';
-import { useNotification } from '../../contexts/NotificationContext';
+import React from "react";
+import {
+  Search,
+  Bell,
+  Heart,
+  ShoppingCart,
+  LogOut,
+  User as UserIcon,
+} from "lucide-react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { User } from "../../types";
+import { useNotification } from "../../contexts/NotificationContext";
 
 interface HeaderProps {
   user?: User | null;
@@ -30,7 +37,7 @@ export const Header = ({
   onNotificationsClick,
   onProfileClick,
   onLogout,
-  onSearchSubmit // Nhận prop này
+  onSearchSubmit, // Nhận prop này
 }: HeaderProps) => {
   const { unreadCount } = useNotification();
   return (
@@ -54,7 +61,7 @@ export const Header = ({
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && onSearchSubmit) {
+                  if (e.key === "Enter" && onSearchSubmit) {
                     onSearchSubmit();
                   }
                 }}
@@ -65,9 +72,9 @@ export const Header = ({
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="relative"
               onClick={onNotificationsClick}
             >
@@ -78,10 +85,10 @@ export const Header = ({
                 </span>
               )}
             </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
+
+            <Button
+              variant="ghost"
+              size="icon"
               className="relative"
               onClick={onWishlistClick}
             >
@@ -92,10 +99,10 @@ export const Header = ({
                 </span>
               )}
             </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
+
+            <Button
+              variant="ghost"
+              size="icon"
               className="relative"
               onClick={onCartClick}
             >
@@ -106,7 +113,7 @@ export const Header = ({
                 </span>
               )}
             </Button>
-            
+
             {user && (
               <div className="flex items-center space-x-2 ml-4">
                 <button
@@ -116,13 +123,17 @@ export const Header = ({
                   {user.avatar ? (
                     <img
                       src={user.avatar}
-                      alt={`${user.first_name || ''} ${user.last_name || ''}`.trim()}
+                      alt={`${user.first_name || ""} ${
+                        user.last_name || ""
+                      }`.trim()}
                       className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (
                     <UserIcon className="h-8 w-8 text-gray-400 bg-gray-100 rounded-full p-1" />
                   )}
-                  <span className="text-sm font-medium text-gray-700">{`${user.first_name || ''} ${user.last_name || ''}`.trim()}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {`${user.first_name || ""} ${user.last_name || ""}`.trim()}
+                  </span>
                 </button>
                 <Button
                   variant="ghost"

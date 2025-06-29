@@ -117,34 +117,34 @@ export interface UserProfile {
   gender: string;
 }
 
-export type Screen = 
-  | 'landing' 
-  | 'login' 
-  | 'register' 
-  | 'dashboard' 
-  | 'product-detail' 
-  | 'cart' 
-  | 'checkout' 
-  | 'order-success' 
-  | 'profile' 
-  | 'search' 
-  | 'wishlist' 
-  | 'notifications' 
-  | 'order-history' 
-  | 'categories' 
-  | 'events' 
-  | 'settings'
-  | 'admin-dashboard'
-  | 'admin-products'
-  | 'admin-orders'
-  | 'admin-users'
-  | 'admin-analytics'
-  | 'admin-inventory'
-  | 'admin-promotions'
-  | 'admin-reviews';
+export type Screen =
+  | "landing"
+  | "login"
+  | "register"
+  | "dashboard"
+  | "product-detail"
+  | "cart"
+  | "checkout"
+  | "order-success"
+  | "profile"
+  | "search"
+  | "wishlist"
+  | "notifications"
+  | "order-history"
+  | "categories"
+  | "events"
+  | "settings"
+  | "admin-dashboard"
+  | "admin-products"
+  | "admin-orders"
+  | "admin-users"
+  | "admin-analytics"
+  | "admin-inventory"
+  | "admin-promotions"
+  | "admin-reviews";
 
 export interface ToastType {
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: "success" | "error" | "warning" | "info";
   title: string;
   description?: string;
   duration?: number;
@@ -158,7 +158,7 @@ export interface Category {
 
 export interface Notification {
   id: number;
-  type: 'order' | 'promotion' | 'reminder' | 'system';
+  type: "order" | "promotion" | "reminder" | "system";
   title: string;
   message: string;
   time: string;

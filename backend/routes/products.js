@@ -77,7 +77,10 @@ router.get("/", async (req, res) => {
     if (search && search.trim().toLowerCase().includes("quà tặng")) {
       isGiftSearch = true;
     }
-    if (category && decodeURIComponent(category).trim().toLowerCase() === "quà tặng") {
+    if (
+      category &&
+      decodeURIComponent(category).trim().toLowerCase() === "quà tặng"
+    ) {
       isGiftSearch = true;
     }
 
@@ -136,7 +139,9 @@ router.get("/", async (req, res) => {
     });
   } catch (error) {
     console.error("Get products error:", error);
-    res.status(500).json({ message: "Internal server error", detail: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", detail: error.message });
   }
 });
 

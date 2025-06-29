@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Bell, Check, Trash2 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent } from '../../components/ui/card';
-import { EmptyState } from '../../components/common';
-import { useToast } from '../../components/ui/toast';
-import { NotificationProvider, useNotification } from '../../contexts/NotificationContext';
+import React, { useState } from "react";
+import { ArrowLeft, Bell, Check, Trash2 } from "lucide-react";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent } from "../../components/ui/card";
+import { EmptyState } from "../../components/common";
+import { useToast } from "../../components/ui/toast";
+import {
+  NotificationProvider,
+  useNotification,
+} from "../../contexts/NotificationContext";
 
 interface NotificationsProps {
   onBack: () => void;
@@ -22,41 +25,43 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
     unreadCount,
   } = useNotification();
 
-  const [filter, setFilter] = useState<'all' | 'unread' | 'order' | 'promotion'>('all');
+  const [filter, setFilter] = useState<
+    "all" | "unread" | "order" | "promotion"
+  >("all");
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (filter === 'all') return true;
-    if (filter === 'unread') return !notification.isRead;
+  const filteredNotifications = notifications.filter((notification) => {
+    if (filter === "all") return true;
+    if (filter === "unread") return !notification.isRead;
     return notification.type === filter;
   });
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'order':
-        return 'bg-blue-100 text-blue-800';
-      case 'promotion':
-        return 'bg-red-100 text-red-800';
-      case 'reminder':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'system':
-        return 'bg-gray-100 text-gray-800';
+      case "order":
+        return "bg-blue-100 text-blue-800";
+      case "promotion":
+        return "bg-red-100 text-red-800";
+      case "reminder":
+        return "bg-yellow-100 text-yellow-800";
+      case "system":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getTypeName = (type: string) => {
     switch (type) {
-      case 'order':
-        return 'Đơn hàng';
-      case 'promotion':
-        return 'Khuyến mãi';
-      case 'reminder':
-        return 'Nhắc nhở';
-      case 'system':
-        return 'Hệ thống';
+      case "order":
+        return "Đơn hàng";
+      case "promotion":
+        return "Khuyến mãi";
+      case "reminder":
+        return "Nhắc nhở";
+      case "system":
+        return "Hệ thống";
       default:
-        return 'Khác';
+        return "Khác";
     }
   };
 
@@ -90,7 +95,14 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { markAllAsRead(); addToast({ type: 'success', title: 'Đã đánh dấu tất cả là đã đọc', duration: 3000 }); }}
+                  onClick={() => {
+                    markAllAsRead();
+                    addToast({
+                      type: "success",
+                      title: "Đã đánh dấu tất cả là đã đọc",
+                      duration: 3000,
+                    });
+                  }}
                   className="flex items-center"
                 >
                   <Check className="h-4 w-4 mr-2" />
@@ -101,7 +113,14 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { deleteAll(); addToast({ type: 'info', title: 'Đã xóa tất cả thông báo', duration: 3000 }); }}
+                  onClick={() => {
+                    deleteAll();
+                    addToast({
+                      type: "info",
+                      title: "Đã xóa tất cả thông báo",
+                      duration: 3000,
+                    });
+                  }}
                   className="flex items-center text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -115,7 +134,9 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading ? (
-          <div className="text-center text-gray-500 py-12">Đang tải thông báo...</div>
+          <div className="text-center text-gray-500 py-12">
+            Đang tải thông báo...
+          </div>
         ) : notifications.length === 0 ? (
           <EmptyState
             icon={<Bell className="h-24 w-24" />}
@@ -131,14 +152,28 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
               <CardContent className="p-4">
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { key: 'all', label: 'Tất cả', count: notifications.length },
-                    { key: 'unread', label: 'Chưa đọc', count: unreadCount },
-                    { key: 'order', label: 'Đơn hàng', count: notifications.filter(n => n.type === 'order').length },
-                    { key: 'promotion', label: 'Khuyến mãi', count: notifications.filter(n => n.type === 'promotion').length }
+                    {
+                      key: "all",
+                      label: "Tất cả",
+                      count: notifications.length,
+                    },
+                    { key: "unread", label: "Chưa đọc", count: unreadCount },
+                    {
+                      key: "order",
+                      label: "Đơn hàng",
+                      count: notifications.filter((n) => n.type === "order")
+                        .length,
+                    },
+                    {
+                      key: "promotion",
+                      label: "Khuyến mãi",
+                      count: notifications.filter((n) => n.type === "promotion")
+                        .length,
+                    },
                   ].map((tab) => (
                     <Button
                       key={tab.key}
-                      variant={filter === tab.key ? 'default' : 'outline'}
+                      variant={filter === tab.key ? "default" : "outline"}
                       size="sm"
                       onClick={() => setFilter(tab.key as any)}
                       className="flex items-center"
@@ -158,12 +193,12 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
             {/* Notifications List */}
             <div className="space-y-4">
               {filteredNotifications.map((notification) => (
-                <Card 
-                  key={notification.id} 
+                <Card
+                  key={notification.id}
                   className={`transition-all duration-200 ${
-                    !notification.isRead 
-                      ? 'border-l-4 border-l-[#49bbbd] bg-blue-50/30' 
-                      : 'hover:shadow-md'
+                    !notification.isRead
+                      ? "border-l-4 border-l-[#49bbbd] bg-blue-50/30"
+                      : "hover:shadow-md"
                   }`}
                 >
                   <CardContent className="p-4">
@@ -174,19 +209,39 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center space-x-2">
-                            <h3 className={`font-medium ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`}>{notification.title}</h3>
-                            <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(notification.type)}`}>{getTypeName(notification.type)}</span>
+                            <h3
+                              className={`font-medium ${
+                                !notification.isRead
+                                  ? "text-gray-900"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {notification.title}
+                            </h3>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${getTypeColor(
+                                notification.type
+                              )}`}
+                            >
+                              {getTypeName(notification.type)}
+                            </span>
                             {!notification.isRead && (
                               <span className="w-2 h-2 bg-[#49bbbd] rounded-full"></span>
                             )}
                           </div>
-                          <span className="text-sm text-gray-500 flex-shrink-0">{notification.time}</span>
+                          <span className="text-sm text-gray-500 flex-shrink-0">
+                            {notification.time}
+                          </span>
                         </div>
-                        <p className="text-gray-600 text-sm mb-3">{notification.message}</p>
+                        <p className="text-gray-600 text-sm mb-3">
+                          {notification.message}
+                        </p>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             {notification.actionLabel && (
-                              <Button size="sm" variant="outline">{notification.actionLabel}</Button>
+                              <Button size="sm" variant="outline">
+                                {notification.actionLabel}
+                              </Button>
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
@@ -194,7 +249,14 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => { markAsRead(notification.id); addToast({ type: 'success', title: 'Đã đánh dấu đã đọc', duration: 2000 }); }}
+                                onClick={() => {
+                                  markAsRead(notification.id);
+                                  addToast({
+                                    type: "success",
+                                    title: "Đã đánh dấu đã đọc",
+                                    duration: 2000,
+                                  });
+                                }}
                                 className="text-[#49bbbd] hover:text-[#3a9a9c]"
                               >
                                 <Check className="h-4 w-4 mr-1" />
@@ -204,7 +266,14 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => { deleteNotification(notification.id); addToast({ type: 'info', title: 'Đã xóa thông báo', duration: 2000 }); }}
+                              onClick={() => {
+                                deleteNotification(notification.id);
+                                addToast({
+                                  type: "info",
+                                  title: "Đã xóa thông báo",
+                                  duration: 2000,
+                                });
+                              }}
                               className="text-red-500 hover:text-red-700"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -222,9 +291,15 @@ export const Notifications = ({ onBack }: NotificationsProps): JSX.Element => {
               <EmptyState
                 icon={<Bell className="h-24 w-24" />}
                 title="Không có thông báo nào"
-                description={`Không có thông báo nào trong danh mục "${filter === 'all' ? 'tất cả' : filter === 'unread' ? 'chưa đọc' : getTypeName(filter)}"`}
+                description={`Không có thông báo nào trong danh mục "${
+                  filter === "all"
+                    ? "tất cả"
+                    : filter === "unread"
+                    ? "chưa đọc"
+                    : getTypeName(filter)
+                }"`}
                 actionLabel="Xem tất cả thông báo"
-                onAction={() => setFilter('all')}
+                onAction={() => setFilter("all")}
               />
             )}
           </>
