@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 
 async function seedDatabase() {
   try {
+    console.log("Starting database seeding...");
+
     // Seed categories
     const categories = [
       { name: "Hoa tươi", description: "Hoa tươi và cây cảnh" },
@@ -99,8 +101,11 @@ async function seedDatabase() {
       }
     }
 
+    console.log("Database seeding completed successfully!");
+    console.log("Admin user created: admin@example.com / admin123");
     process.exit(0);
   } catch (error) {
+    console.error("Seeding failed:", error);
     process.exit(1);
   }
 }

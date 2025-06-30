@@ -120,6 +120,7 @@ async function runMigrations() {
     // Migration: Tạo bảng promotions nếu chưa có
     await createPromotionsTable();
 
+    console.log("Database migrations completed successfully!");
     process.exit(0);
   } catch (error) {
     console.error("Migration failed:", error);
