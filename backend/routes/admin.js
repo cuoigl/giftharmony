@@ -9,7 +9,7 @@ router.get("/stats", authenticateToken, requireAdmin, async (req, res) => {
   try {
     // Get total users
     const userCountResult = await pool.query(
-      "SELECT COUNT(*) as total FROM users WHERE is_active = true"
+      "SELECT COUNT(*) as total FROM users WHERE is_active = true AND role = 'user'"
     );
 
     // Get total products
@@ -56,16 +56,80 @@ router.get("/stats", authenticateToken, requireAdmin, async (req, res) => {
        ORDER BY month DESC`
     );
 
+    // Đơn hàng hôm nay
+    const todayOrdersResult = await pool.query(
+      "SELECT COUNT(*) as total FROM orders WHERE created_at::date = CURRENT_DATE"
+    );
+    // Doanh thu hôm nay
+    const todayRevenueResult = await pool.query(
+      "SELECT SUM(total_amount) as total FROM orders WHERE created_at::date = CURRENT_DATE AND status != $1",
+      ["cancelled"]
+    );
+    // Khách hàng mới hôm nay
+    const newCustomersResult = await pool.query(
+      "SELECT COUNT(*) as total FROM users WHERE created_at::date = CURRENT_DATE AND role = 'user'"
+    );
+    // Tỷ lệ chuyển đổi (ví dụ: số đơn hàng / số khách mới hôm nay)
+    const conversionRate =
+      (parseInt(todayOrdersResult.rows[0].total) /
+        Math.max(1, parseInt(newCustomersResult.rows[0].total))) *
+      100;
+
+    // Thêm hàm tính timeAgo động
+    function getTimeAgo(date) {
+      const now = new Date();
+      const then = new Date(date);
+      const diffMs = now - then;
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Vừa xong';
+      if (diffMins < 60) return `${diffMins} phút trước`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} giờ trước`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays} ngày trước`;
+    }
+
+    // Hoạt động gần đây động
+    const activities = [];
+    if (recentOrdersResult.rows[0]) {
+      activities.push({
+        message: `Đơn hàng #${recentOrdersResult.rows[0].id} đã được tạo`,
+        timeAgo: getTimeAgo(recentOrdersResult.rows[0].created_at),
+      });
+    }
+    // Khách hàng mới nhất
+    const latestUserResult = await pool.query(
+      `SELECT id, first_name, last_name, created_at FROM users WHERE role = 'user' ORDER BY created_at DESC LIMIT 1`
+    );
+    if (latestUserResult.rows[0]) {
+      activities.push({
+        message: `Khách hàng mới: ${latestUserResult.rows[0].first_name || ''} ${latestUserResult.rows[0].last_name || ''}`.trim(),
+        timeAgo: getTimeAgo(latestUserResult.rows[0].created_at),
+      });
+    }
+    // Sản phẩm sắp hết hàng
+    if (lowStockResult.rows[0]) {
+      activities.push({
+        message: `Sản phẩm sắp hết hàng: ${lowStockResult.rows[0].name}`,
+        timeAgo: 'Kiểm tra kho',
+      });
+    }
+
     res.json({
       stats: {
         totalUsers: parseInt(userCountResult.rows[0].total),
         totalProducts: parseInt(productCountResult.rows[0].total),
         totalOrders: parseInt(orderCountResult.rows[0].total),
         totalRevenue: parseFloat(revenueResult.rows[0].total) || 0,
+        todayOrders: parseInt(todayOrdersResult.rows[0].total),
+        todayRevenue: parseFloat(todayRevenueResult.rows[0].total) || 0,
+        newCustomers: parseInt(newCustomersResult.rows[0].total),
+        conversionRate: Math.round(conversionRate * 10) / 10,
       },
       recentOrders: recentOrdersResult.rows,
       lowStockProducts: lowStockResult.rows,
       monthlySales: monthlySalesResult.rows,
+      activities,
     });
   } catch (error) {
     console.error("Get admin stats error:", error);

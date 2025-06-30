@@ -3,8 +3,6 @@ const bcrypt = require("bcryptjs");
 
 async function seedDatabase() {
   try {
-    console.log("Starting database seeding...");
-
     // Seed categories
     const categories = [
       { name: "Hoa tươi", description: "Hoa tươi và cây cảnh" },
@@ -101,13 +99,27 @@ async function seedDatabase() {
       }
     }
 
-    console.log("Database seeding completed successfully!");
-    console.log("Admin user created: admin@example.com / admin123");
     process.exit(0);
   } catch (error) {
-    console.error("Seeding failed:", error);
     process.exit(1);
   }
 }
 
-seedDatabase();
+async function seedPromotions() {
+  await pool.query(`
+    INSERT INTO promotions (name, code, type, value, min_order, max_discount, start_date, end_date, usage_limit, usage_count, status, description)
+    VALUES
+      ('Valentine Sale 2025', 'VALENTINE20', 'percentage', 20, 500000, 200000, '2025-02-10', '2025-02-20', 1000, 234, 'active', 'Giảm 20% cho tất cả sản phẩm nhân dịp Valentine'),
+      ('Miễn phí vận chuyển', 'FREESHIP', 'free_shipping', 0, 300000, NULL, '2025-01-01', '2025-12-31', 5000, 1567, 'active', 'Miễn phí vận chuyển cho đơn hàng từ 300k'),
+      ('Khách hàng mới', 'NEWUSER15', 'percentage', 15, 200000, 150000, '2025-01-01', '2025-03-31', 2000, 456, 'active', 'Giảm 15% cho khách hàng đăng ký mới'),
+      ('Tết Nguyên Đán', 'TET2025', 'fixed_amount', 100000, 1000000, NULL, '2025-01-25', '2025-02-05', 500, 89, 'expired', 'Giảm 100k cho đơn hàng từ 1 triệu')
+    ON CONFLICT (code) DO NOTHING;
+  `);
+}
+
+async function seed() {
+  await seedDatabase();
+  await seedPromotions();
+}
+
+seed();

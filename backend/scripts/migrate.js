@@ -2,8 +2,6 @@ const { pool } = require("../config/database");
 
 async function runMigrations() {
   try {
-    console.log("Starting database migrations...");
-
     // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -60,11 +58,15 @@ async function runMigrations() {
       CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        total_amount DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+        total_amount NUMERIC NOT NULL,
         shipping_address TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        shipping_fee NUMERIC DEFAULT 0,
+        discount NUMERIC DEFAULT 0,
+        promo_code TEXT,
+        final_total NUMERIC DEFAULT 0,
+        status VARCHAR(32) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
@@ -115,12 +117,37 @@ async function runMigrations() {
       )
     `);
 
-    console.log("Database migrations completed successfully!");
+    // Migration: Tạo bảng promotions nếu chưa có
+    await createPromotionsTable();
+
     process.exit(0);
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);
   }
+}
+
+// Migration: Tạo bảng promotions nếu chưa có
+async function createPromotionsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS promotions (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      code VARCHAR(100) NOT NULL UNIQUE,
+      type VARCHAR(50) NOT NULL, -- percentage, fixed_amount, free_shipping
+      value NUMERIC NOT NULL,
+      min_order NUMERIC DEFAULT 0,
+      max_discount NUMERIC,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      usage_limit INTEGER DEFAULT 0,
+      usage_count INTEGER DEFAULT 0,
+      status VARCHAR(50) NOT NULL DEFAULT 'active',
+      description TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP
+    );
+  `);
 }
 
 runMigrations();

@@ -40,16 +40,13 @@ router.post("/", authenticateToken, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const { items, shipping_address } = req.body;
-    console.log("POST /orders called by user:", req.user.id, "body:", req.body);
+    const { items, shipping_address, shipping_fee = 0, discount = 0, promo_code = null, final_total = 0 } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
-      console.log("Order creation failed: missing items");
       return res
         .status(400)
         .json({ message: "Thiếu danh sách sản phẩm (items)" });
     }
     if (!shipping_address) {
-      console.log("Order creation failed: missing shipping_address");
       return res
         .status(400)
         .json({ message: "Thiếu địa chỉ giao hàng (shipping_address)" });
@@ -64,10 +61,6 @@ router.post("/", authenticateToken, async (req, res) => {
       );
 
       if (productResult.rows.length === 0) {
-        console.log(
-          "Order creation failed: product not found",
-          item.product_id
-        );
         await client.query("ROLLBACK");
         return res
           .status(404)
@@ -76,10 +69,6 @@ router.post("/", authenticateToken, async (req, res) => {
 
       const product = productResult.rows[0];
       if (product.stock_quantity < item.quantity) {
-        console.log(
-          "Order creation failed: not enough stock for product",
-          item.product_id
-        );
         await client.query("ROLLBACK");
         return res
           .status(400)
@@ -89,14 +78,17 @@ router.post("/", authenticateToken, async (req, res) => {
       total_amount += product.price * item.quantity;
     }
 
+    // Tính tổng cuối cùng
+    const finalTotal = Number(total_amount) + Number(shipping_fee) - Number(discount);
+
     // Create order
     const orderResult = await client.query(
-      "INSERT INTO orders (user_id, total_amount, shipping_address) VALUES ($1, $2, $3) RETURNING id",
-      [req.user.id, total_amount, shipping_address]
+      "INSERT INTO orders (user_id, total_amount, shipping_address, shipping_fee, discount, promo_code, final_total) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      [req.user.id, total_amount, shipping_address, shipping_fee, discount, promo_code, finalTotal]
     );
 
-    const orderId = orderResult.rows[0].id;
-    console.log("Order created with id:", orderId);
+    const order = orderResult.rows[0];
+    const orderId = order.id;
 
     // Create order items and update stock
     for (const item of items) {
@@ -121,22 +113,15 @@ router.post("/", authenticateToken, async (req, res) => {
 
     await client.query("COMMIT");
 
-    console.log(
-      "Order committed successfully for user:",
-      req.user.id,
-      "orderId:",
-      orderId,
-      "total_amount:",
-      total_amount
-    );
     res.status(201).json({
       message: "Order created successfully",
-      order_id: orderId,
-      total_amount,
+      order: {
+        ...order,
+        items,
+      },
     });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("Create order error:", error);
     res.status(400).json({ message: error.message });
   } finally {
     client.release();

@@ -157,4 +157,71 @@ router.delete(
   }
 );
 
+// Approve review (Admin only)
+router.put(
+  "/admin/:id/approve",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        "UPDATE reviews SET status = 'approved' WHERE id = $1 RETURNING *",
+        [req.params.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      res.json({ message: "Review approved successfully" });
+    } catch (error) {
+      console.error("Approve review error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+// Reject review (Admin only)
+router.put(
+  "/admin/:id/reject",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        "UPDATE reviews SET status = 'rejected' WHERE id = $1 RETURNING *",
+        [req.params.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      res.json({ message: "Review rejected successfully" });
+    } catch (error) {
+      console.error("Reject review error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+// Reply to review (Admin only)
+router.put(
+  "/admin/:id/reply",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { reply } = req.body;
+      const result = await pool.query(
+        "UPDATE reviews SET response = $1 WHERE id = $2 RETURNING *",
+        [reply, req.params.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Review not found" });
+      }
+      res.json({ message: "Reply saved successfully" });
+    } catch (error) {
+      console.error("Reply review error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
 module.exports = router;

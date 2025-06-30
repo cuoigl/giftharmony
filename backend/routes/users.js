@@ -121,9 +121,16 @@ router.put("/password", authenticateToken, async (req, res) => {
 // Get all users (Admin only)
 router.get("/admin", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT id, email, first_name, last_name, phone, role, is_active, created_at FROM users ORDER BY created_at DESC"
-    );
+    const result = await pool.query(`
+      SELECT 
+        u.id, u.email, u.first_name, u.last_name, u.phone, u.role, u.is_active, u.created_at,
+        COALESCE(SUM(o.total_amount), 0) AS total_spent,
+        COUNT(o.id) AS total_orders
+      FROM users u
+      LEFT JOIN orders o ON o.user_id = u.id AND o.status != 'cancelled'
+      GROUP BY u.id, u.email, u.first_name, u.last_name, u.phone, u.role, u.is_active, u.created_at
+      ORDER BY u.created_at DESC
+    `);
 
     res.json(result.rows);
   } catch (error) {

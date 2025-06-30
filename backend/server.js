@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const logger = require("./middleware/logger");
 const { testConnection } = require("./config/database");
+const promotionsRouter = require('./routes/promotions');
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +33,7 @@ app.use("/api/wishlist", require("./routes/wishlist"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/users", require("./routes/users"));
 app.use("/api/admin", require("./routes/admin"));
+app.use('/api/promotions', promotionsRouter);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -50,6 +52,5 @@ app.use("*", (req, res) => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
   await testConnection();
 });
