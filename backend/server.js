@@ -9,7 +9,7 @@ const promotionsRouter = require('./routes/promotions');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(
@@ -51,7 +51,7 @@ app.use("*", (req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server is running on port ${PORT}`);
   await testConnection();
 });
