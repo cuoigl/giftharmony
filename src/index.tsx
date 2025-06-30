@@ -55,7 +55,7 @@ function ProductDetailWrapper(props: any) {
 }
 
 function AppRoutes() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -68,7 +68,7 @@ function AppRoutes() {
   };
 
   const handleLogout = () => {
-    window.location.replace("/");
+    logout();
   };
 
   if (isLoading) {

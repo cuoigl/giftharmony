@@ -115,9 +115,7 @@ export const Login = ({
         description: "Chào mừng bạn quay trở lại!",
         duration: 3000,
       });
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      }
+      window.location.reload();
     } catch (error: any) {
       addToast({
         type: "error",
