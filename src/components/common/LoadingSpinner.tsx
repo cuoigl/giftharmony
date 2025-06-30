@@ -16,3 +16,7 @@ export const LoadingSpinner = ({ size = 'md', className = '' }: LoadingSpinnerPr
     <div className={`animate-spin rounded-full border-2 border-gray-300 border-t-[#49bbbd] ${sizeClasses[size]} ${className}`} />
   );
 };
+
+export const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
+);

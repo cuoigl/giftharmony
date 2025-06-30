@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -25,6 +26,7 @@ interface User {
   address?: string;
   birthDate?: string;
   gender?: string;
+  role?: string;
 }
 
 export const UserManagement = ({ onBack }: UserManagementProps): JSX.Element => {
@@ -35,77 +37,47 @@ export const UserManagement = ({ onBack }: UserManagementProps): JSX.Element => 
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      email: 'nguyenvana@email.com',
-      phone: '0901234567',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      status: 'active',
-      level: 'Gold Member',
-      points: 1250,
-      totalOrders: 24,
-      totalSpent: 5600000,
-      joinDate: '15/01/2024',
-      lastLogin: '15/01/2025',
-      address: '123 Nguyễn Văn Linh, Q7, TP.HCM',
-      birthDate: '1990-05-15',
-      gender: 'Nam'
-    },
-    {
-      id: 2,
-      name: 'Trần Thị B',
-      email: 'tranthib@email.com',
-      phone: '0907654321',
-      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      status: 'active',
-      level: 'Silver Member',
-      points: 890,
-      totalOrders: 12,
-      totalSpent: 2300000,
-      joinDate: '20/02/2024',
-      lastLogin: '14/01/2025',
-      address: '456 Lê Văn Việt, Q9, TP.HCM',
-      birthDate: '1985-08-22',
-      gender: 'Nữ'
-    },
-    {
-      id: 3,
-      name: 'Lê Văn C',
-      email: 'levanc@email.com',
-      phone: '0912345678',
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      status: 'inactive',
-      level: 'Bronze Member',
-      points: 340,
-      totalOrders: 5,
-      totalSpent: 890000,
-      joinDate: '10/03/2024',
-      lastLogin: '20/12/2024',
-      address: '789 Võ Văn Tần, Q3, TP.HCM',
-      birthDate: '1992-12-10',
-      gender: 'Nam'
-    },
-    {
-      id: 4,
-      name: 'Phạm Thị D',
-      email: 'phamthid@email.com',
-      phone: '0923456789',
-      avatar: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      status: 'banned',
-      level: 'New Member',
-      points: 0,
-      totalOrders: 1,
-      totalSpent: 150000,
-      joinDate: '05/12/2024',
-      lastLogin: '10/12/2024',
-      address: '321 Điện Biên Phủ, Q1, TP.HCM',
-      birthDate: '1995-03-18',
-      gender: 'Nữ'
-    }
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const res: any = await apiService.getAllUsers();
+        // Map dữ liệu từ API về đúng định dạng User
+        const mapped = res.map((u: any) => ({
+          id: u.id,
+          name: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+          email: u.email,
+          phone: u.phone || '',
+          avatar: u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(`${u.first_name || ''} ${u.last_name || ''}`),
+          status: u.is_active ? 'active' : 'inactive',
+          level: u.level || 'New Member',
+          points: u.points || 0,
+          totalOrders: u.total_orders || 0,
+          totalSpent: u.total_spent || 0,
+          joinDate: u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '',
+          lastLogin: u.last_login ? new Date(u.last_login).toLocaleDateString('vi-VN') : '',
+          address: u.address || '',
+          birthDate: u.birthDate || '',
+          gender: u.gender || '',
+          role: u.role || '',
+        }));
+        setUsers(mapped);
+      } catch (error: any) {
+        addToast({
+          type: 'error',
+          title: 'Lỗi tải danh sách người dùng',
+          description: error.message || 'Không thể tải dữ liệu từ server',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, [addToast]);
 
   const statusOptions = [
     { value: 'all', label: 'Tất cả trạng thái' },
@@ -119,7 +91,8 @@ export const UserManagement = ({ onBack }: UserManagementProps): JSX.Element => 
                          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          user.phone.includes(searchQuery);
     const matchesStatus = selectedStatus === 'all' || user.status === selectedStatus;
-    return matchesSearch && matchesStatus;
+    const isNotAdmin = user.level !== 'admin' && user.role !== 'admin';
+    return matchesSearch && matchesStatus && isNotAdmin;
   });
 
   const formatPrice = (price: number) => {
@@ -218,6 +191,17 @@ export const UserManagement = ({ onBack }: UserManagementProps): JSX.Element => 
       setEditingUser(prev => prev ? { ...prev, [field]: value } : null);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#49bbbd] mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải danh sách người dùng...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -353,7 +337,6 @@ export const UserManagement = ({ onBack }: UserManagementProps): JSX.Element => 
                       <td className="py-4 px-4">
                         <p className="text-sm text-gray-900">{user.email}</p>
                         <p className="text-sm text-gray-600">{user.phone}</p>
-                        <p className="text-sm text-gray-500">Đăng nhập: {user.lastLogin}</p>
                       </td>
                       <td className="py-4 px-4">
                         <p className={`font-medium ${getLevelColor(user.level)}`}>{user.level}</p>

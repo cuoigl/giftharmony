@@ -47,7 +47,7 @@ interface Order {
   date: string;
   items: OrderItem[];
   total: number;
-  status: "Đang xử lý" | "Đã xác nhận" | "Đang giao" | "Đã giao" | "Đã hủy";
+  status: string;
   shippingAddress: string;
   paymentMethod: string;
   trackingNumber?: string;
@@ -61,6 +61,33 @@ interface Order {
   notes?: string;
   deliveryDate?: string;
 }
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "Đang xử lý";
+    case "processing":
+      return "Đã xác nhận";
+    case "shipped":
+      return "Đang giao";
+    case "delivered":
+      return "Đã giao";
+    case "cancelled":
+      return "Đã hủy";
+    case "Đang xử lý":
+      return "Đang xử lý";
+    case "Đã xác nhận":
+      return "Đã xác nhận";
+    case "Đang giao":
+      return "Đang giao";
+    case "Đã giao":
+      return "Đã giao";
+    case "Đã hủy":
+      return "Đã hủy";
+    default:
+      return status;
+  }
+};
 
 export const OrderHistory = ({
   onBack,
@@ -224,11 +251,11 @@ export const OrderHistory = ({
 
   const statusOptions = [
     { value: "all", label: "Tất cả trạng thái" },
-    { value: "Đang xử lý", label: "Đang xử lý" },
-    { value: "Đã xác nhận", label: "Đã xác nhận" },
-    { value: "Đang giao", label: "Đang giao" },
-    { value: "Đã giao", label: "Đã giao" },
-    { value: "Đã hủy", label: "Đã hủy" },
+    { value: "pending", label: "Đang xử lý" },
+    { value: "processing", label: "Đã xác nhận" },
+    { value: "shipped", label: "Đang giao" },
+    { value: "delivered", label: "Đã giao" },
+    { value: "cancelled", label: "Đã hủy" },
   ];
 
   const dateOptions = [
@@ -237,6 +264,28 @@ export const OrderHistory = ({
     { value: "30days", label: "30 ngày qua" },
     { value: "90days", label: "3 tháng qua" },
   ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+      case "Đang xử lý":
+        return "bg-blue-100 text-blue-700";
+      case "processing":
+      case "Đã xác nhận":
+        return "bg-yellow-100 text-yellow-700";
+      case "shipped":
+      case "Đang giao":
+        return "bg-purple-100 text-purple-700";
+      case "delivered":
+      case "Đã giao":
+        return "bg-green-100 text-green-700";
+      case "cancelled":
+      case "Đã hủy":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#fffefc]">
@@ -262,12 +311,54 @@ export const OrderHistory = ({
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {orders.length > 0 && (
+          <Card className="mt-4 mb-6">
+            <CardHeader>
+              <CardTitle className="font-['Poppins',Helvetica]">
+                Thống kê đơn hàng
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-[#49bbbd]">
+                    {orders.length}
+                  </div>
+                  <div className="text-sm text-gray-600">Tổng đơn hàng</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {orders.filter((o) => o.status === "delivered").length}
+                  </div>
+                  <div className="text-sm text-gray-600">Đã giao thành công</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {orders.filter((o) => ["pending", "processing", "shipped"].includes(o.status)).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Đang xử lý</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-[#49bbbd]">
+                    {formatPrice(
+                      orders.reduce((sum, order) => sum + Number(order.total || 0), 0)
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600">Tổng giá trị</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
         {/* Search and Filters */}
         <Card className="mb-6">
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
+            <div className="grid grid-cols-5 gap-4 items-center">
+              <div className="relative col-span-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type="text"
@@ -277,11 +368,10 @@ export const OrderHistory = ({
                   className="pl-10"
                 />
               </div>
-
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
+                className="w-56 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
               >
                 {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -289,11 +379,10 @@ export const OrderHistory = ({
                   </option>
                 ))}
               </select>
-
               <select
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
+                className="w-56 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
               >
                 {dateOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -301,7 +390,6 @@ export const OrderHistory = ({
                   </option>
                 ))}
               </select>
-
               <Button variant="outline" className="flex items-center">
                 <Filter className="h-4 w-4 mr-2" />
                 Bộ lọc nâng cao
@@ -341,12 +429,10 @@ export const OrderHistory = ({
                         Đơn hàng #{order.id}
                       </CardTitle>
                       <span
-                        className={`px-3 py-1 text-sm rounded-full flex items-center ${getStatusColor(
-                          order.status
-                        )}`}
+                        className={`px-3 py-1 text-sm rounded-full flex items-center font-semibold ${getStatusColor(order.status)}`}
                       >
                         {getStatusIcon(order.status)}
-                        <span className="ml-1">{order.status}</span>
+                        <span className="ml-1">{getStatusLabel(order.status)}</span>
                       </span>
                     </div>
                     <div className="text-right">
@@ -368,12 +454,16 @@ export const OrderHistory = ({
                         key={item.id}
                         className="flex items-center space-x-3"
                       >
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Package className="h-6 w-6 text-gray-400" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 truncate">
@@ -451,55 +541,6 @@ export const OrderHistory = ({
             ))}
           </div>
         )}
-
-        {/* Summary Stats */}
-        {orders.length > 0 && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="font-['Poppins',Helvetica]">
-                Thống kê đơn hàng
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-[#49bbbd]">
-                    {orders.length}
-                  </div>
-                  <div className="text-sm text-gray-600">Tổng đơn hàng</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    {orders.filter((o) => o.status === "Đã giao").length}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Đã giao thành công
-                  </div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {
-                      orders.filter((o) =>
-                        ["Đang xử lý", "Đã xác nhận", "Đang giao"].includes(
-                          o.status
-                        )
-                      ).length
-                    }
-                  </div>
-                  <div className="text-sm text-gray-600">Đang xử lý</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-[#49bbbd]">
-                    {formatPrice(
-                      orders.reduce((sum, order) => sum + order.total, 0)
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600">Tổng giá trị</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Order Detail Modal */}
@@ -538,7 +579,7 @@ export const OrderHistory = ({
                       >
                         {getStatusIcon(selectedOrder.status)}
                         <span className="ml-2 font-medium">
-                          {selectedOrder.status}
+                          {getStatusLabel(selectedOrder.status)}
                         </span>
                       </span>
                     </div>
@@ -638,12 +679,16 @@ export const OrderHistory = ({
                           key={item.id}
                           className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg"
                         >
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
+                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="h-8 w-8 text-gray-400" />
+                            )}
                           </div>
                           <div className="flex-1">
                             <h4 className="font-medium text-gray-900">

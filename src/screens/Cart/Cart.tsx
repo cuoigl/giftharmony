@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag, Gift, Truck, CreditCard, Tag, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { useCart } from '../../contexts/CartContext';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface CartProps {
   onBack: () => void;
-  onCheckout: () => void;
+  onCheckout: (checkoutData: {
+    appliedPromo: PromoCode | null;
+    selectedShipping: string;
+    discount: number;
+    shippingCost: number;
+  }) => void;
 }
 
 interface PromoCode {
@@ -17,6 +23,7 @@ interface PromoCode {
   minOrder: number;
   freeShipping?: boolean;
   description: string;
+  type: string;
 }
 
 export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
@@ -27,45 +34,14 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
   const [selectedShipping, setSelectedShipping] = useState('standard');
   const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const shippingOptions = [
     { id: 'standard', name: 'Giao hàng tiêu chuẩn', time: '2-3 ngày', price: 30000 },
     { id: 'express', name: 'Giao hàng nhanh', time: 'Trong ngày', price: 50000 },
     { id: 'premium', name: 'Giao hàng cao cấp', time: '2-4 giờ', price: 100000 }
-  ];
-
-  const promoCodes: PromoCode[] = [
-    { 
-      code: 'VALENTINE20', 
-      discount: 20, 
-      minOrder: 500000,
-      description: 'Giảm 20% cho tất cả sản phẩm nhân dịp Valentine (đơn từ 500k)'
-    },
-    { 
-      code: 'NEWUSER15', 
-      discount: 15, 
-      minOrder: 200000,
-      description: 'Giảm 15% cho khách hàng mới (đơn từ 200k)'
-    },
-    { 
-      code: 'FREESHIP', 
-      discount: 0, 
-      freeShipping: true, 
-      minOrder: 300000,
-      description: 'Miễn phí vận chuyển cho đơn hàng từ 300k'
-    },
-    { 
-      code: 'SPRING25', 
-      discount: 25, 
-      minOrder: 1000000,
-      description: 'Giảm 25% cho đơn hàng từ 1 triệu - Chào xuân 2025'
-    },
-    { 
-      code: 'SAVE50K', 
-      discount: 50000, 
-      minOrder: 800000,
-      description: 'Giảm 50k cho đơn hàng từ 800k'
-    }
   ];
 
   const handleUpdateQuantity = (id: number, newQuantity: number) => {
@@ -83,7 +59,7 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
   };
 
   const applyPromoCode = (selectedPromo?: PromoCode) => {
-    const promo = selectedPromo || promoCodes.find(p => p.code === promoCode.toUpperCase());
+    const promo = selectedPromo || promoCodes.find((p: PromoCode) => p.code === promoCode.toUpperCase());
     
     if (promo && subtotal >= promo.minOrder) {
       setAppliedPromo(promo);
@@ -145,7 +121,32 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
   const inStockItems = items.filter(item => item.inStock);
   const outOfStockItems = items.filter(item => !item.inStock);
 
-  const availablePromoCodes = promoCodes.filter(promo => subtotal >= promo.minOrder);
+  const availablePromoCodes = promoCodes.filter((promo: PromoCode) => subtotal >= promo.minOrder);
+
+  useEffect(() => {
+    const fetchPromos = async () => {
+      setPromoLoading(true);
+      setPromoError(null);
+      try {
+        const promos = await apiService.getPromotions() as any[];
+        // Map API data về đúng định dạng PromoCode
+        const mapped = promos.map((p: any) => ({
+          code: p.code,
+          discount: Number(p.value || 0),
+          minOrder: Number(p.min_order || 0),
+          freeShipping: p.type === 'free_shipping' || !!p.free_shipping,
+          description: p.description || '',
+          type: p.type === 'fixed_amount' ? 'fixed' : p.type === 'percentage' ? 'percent' : p.type,
+        }));
+        setPromoCodes(mapped);
+      } catch (err: any) {
+        setPromoError('Không thể tải mã khuyến mãi');
+      } finally {
+        setPromoLoading(false);
+      }
+    };
+    fetchPromos();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#fffefc]">
@@ -230,7 +231,7 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                              onClick={() => handleUpdateQuantity(Number(item.id), item.quantity - 1)}
                               className="h-8 w-8"
                             >
                               <Minus className="h-4 w-4" />
@@ -241,7 +242,7 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                              onClick={() => handleUpdateQuantity(Number(item.id), item.quantity + 1)}
                               disabled={item.quantity >= item.maxQuantity}
                               className="h-8 w-8"
                             >
@@ -252,7 +253,7 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleRemoveItem(item.id, item.name)}
+                            onClick={() => handleRemoveItem(Number(item.id), item.name)}
                             className="text-red-500 hover:text-red-700 h-8 w-8"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -293,7 +294,7 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleRemoveItem(item.id, item.name)}
+                          onClick={() => handleRemoveItem(Number(item.id), item.name)}
                           className="text-red-500 hover:text-red-700 h-8 w-8"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -361,9 +362,9 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
                       <div>
                         <p className="font-medium text-green-800">{appliedPromo.code}</p>
                         <p className="text-sm text-green-600">
-                          {appliedPromo.freeShipping ? 'Miễn phí vận chuyển' : 
-                           appliedPromo.discount > 100 ? `Giảm ${formatPrice(appliedPromo.discount)}` :
-                           `Giảm ${appliedPromo.discount}%`}
+                          {appliedPromo.freeShipping ? 'Miễn phí vận chuyển'
+                           : (appliedPromo.type === 'fixed' || appliedPromo.type === 'amount') ? `Giảm ${formatPrice(appliedPromo.discount)}`
+                           : `Giảm ${appliedPromo.discount}%`}
                         </p>
                       </div>
                       <Button
@@ -444,7 +445,12 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
 
                   <div className="space-y-3">
                     <Button
-                      onClick={onCheckout}
+                      onClick={() => onCheckout({
+                        appliedPromo,
+                        selectedShipping,
+                        discount,
+                        shippingCost,
+                      })}
                       disabled={inStockItems.length === 0}
                       className="w-full bg-[#49bbbd] hover:bg-[#3a9a9c] text-white h-12"
                     >
@@ -507,67 +513,70 @@ export const Cart = ({ onBack, onCheckout }: CartProps): JSX.Element => {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            
             <div className="space-y-4">
-              {promoCodes.map((promo) => {
-                const isEligible = subtotal >= promo.minOrder;
-                const isApplied = appliedPromo?.code === promo.code;
-                
-                return (
-                  <div 
-                    key={promo.code} 
-                    className={`p-4 border rounded-lg ${
-                      isEligible ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
-                    } ${isApplied ? 'ring-2 ring-[#49bbbd]' : ''}`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-[#49bbbd] text-lg">{promo.code}</span>
-                        {isApplied && (
-                          <span className="px-2 py-1 bg-[#49bbbd] text-white text-xs rounded-full">
-                            Đã áp dụng
+              {promoLoading ? (
+                <div className="text-center py-8 text-gray-400">Đang tải mã khuyến mãi...</div>
+              ) : promoError ? (
+                <div className="text-center py-8 text-red-500">{promoError}</div>
+              ) : promoCodes.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">Hiện không có mã khuyến mãi nào</div>
+              ) : (
+                promoCodes.map((promo: PromoCode) => {
+                  const isEligible = subtotal >= promo.minOrder;
+                  const isApplied = appliedPromo?.code === promo.code;
+                  return (
+                    <div 
+                      key={promo.code} 
+                      className={`p-4 border rounded-lg ${
+                        isEligible ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
+                      } ${isApplied ? 'ring-2 ring-[#49bbbd]' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-[#49bbbd] text-lg">{promo.code}</span>
+                          {isApplied && (
+                            <span className="px-2 py-1 bg-[#49bbbd] text-white text-xs rounded-full">
+                              Đã áp dụng
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          {promo.freeShipping ? (
+                            <span className="text-green-600 font-medium">Miễn phí ship</span>
+                          ) : (promo.type === 'fixed' || promo.type === 'amount') ? (
+                            <span className="text-green-600 font-medium">Giảm {formatPrice(promo.discount)}</span>
+                          ) : (
+                            <span className="text-green-600 font-medium">Giảm {promo.discount}%</span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{promo.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">
+                          Đơn tối thiểu: {formatPrice(promo.minOrder)}
+                        </span>
+                        {isEligible ? (
+                          <Button
+                            size="sm"
+                            onClick={() => applyPromoCode(promo)}
+                            disabled={isApplied}
+                            className="bg-[#49bbbd] hover:bg-[#3a9a9c] text-white"
+                          >
+                            {isApplied ? 'Đã áp dụng' : 'Áp dụng'}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-red-500">
+                            Cần thêm {formatPrice(promo.minOrder - subtotal)}
                           </span>
                         )}
                       </div>
-                      <div className="text-right">
-                        {promo.freeShipping ? (
-                          <span className="text-green-600 font-medium">Miễn phí ship</span>
-                        ) : promo.discount > 100 ? (
-                          <span className="text-green-600 font-medium">Giảm {formatPrice(promo.discount)}</span>
-                        ) : (
-                          <span className="text-green-600 font-medium">Giảm {promo.discount}%</span>
-                        )}
-                      </div>
                     </div>
-                    
-                    <p className="text-sm text-gray-600 mb-3">{promo.description}</p>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        Đơn tối thiểu: {formatPrice(promo.minOrder)}
-                      </span>
-                      
-                      {isEligible ? (
-                        <Button
-                          size="sm"
-                          onClick={() => applyPromoCode(promo)}
-                          disabled={isApplied}
-                          className="bg-[#49bbbd] hover:bg-[#3a9a9c] text-white"
-                        >
-                          {isApplied ? 'Đã áp dụng' : 'Áp dụng'}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-red-500">
-                          Cần thêm {formatPrice(promo.minOrder - subtotal)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
-            
-            {availablePromoCodes.length === 0 && (
+            {/* Nếu có mã nhưng không đủ điều kiện, hiển thị thông báo động viên */}
+            {promoCodes.length > 0 && availablePromoCodes.length === 0 && !promoLoading && !promoError && (
               <div className="text-center py-8">
                 <p className="text-gray-500">Không có mã khuyến mãi nào phù hợp với đơn hàng hiện tại</p>
                 <p className="text-sm text-gray-400 mt-2">

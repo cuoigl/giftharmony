@@ -1,81 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Package, Calendar, Download } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { apiService } from '../../services/api';
 
 interface AnalyticsProps {
   onBack: () => void;
 }
 
 export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
-  const [selectedPeriod, setSelectedPeriod] = useState('7days');
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState<any>(null);
+  const [sales, setSales] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [topCategories, setTopCategories] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   const periods = [
-    { value: '7days', label: '7 ngày qua' },
-    { value: '30days', label: '30 ngày qua' },
-    { value: '3months', label: '3 tháng qua' },
-    { value: '1year', label: '1 năm qua' }
+    { value: 'day', label: '30 ngày qua' },
+    { value: 'week', label: '12 tuần qua' },
+    { value: 'month', label: '12 tháng qua' },
+    { value: 'year', label: '5 năm qua' }
   ];
 
-  const stats = [
-    {
-      title: 'Tổng doanh thu',
-      value: '125.5M',
-      unit: 'VNĐ',
-      change: '+12.5%',
-      changeType: 'increase',
-      icon: <DollarSign className="h-6 w-6" />,
-      color: 'text-green-600'
-    },
-    {
-      title: 'Đơn hàng',
-      value: '1,234',
-      change: '+8.2%',
-      changeType: 'increase',
-      icon: <ShoppingCart className="h-6 w-6" />,
-      color: 'text-blue-600'
-    },
-    {
-      title: 'Khách hàng mới',
-      value: '89',
-      change: '+15.3%',
-      changeType: 'increase',
-      icon: <Users className="h-6 w-6" />,
-      color: 'text-purple-600'
-    },
-    {
-      title: 'Sản phẩm bán ra',
-      value: '2,456',
-      change: '+5.7%',
-      changeType: 'increase',
-      icon: <Package className="h-6 w-6" />,
-      color: 'text-orange-600'
-    }
-  ];
-
-  const topProducts = [
-    { name: 'Hoa hồng đỏ cao cấp', revenue: '46.8M', orders: 156, growth: '+23%' },
-    { name: 'Đồng hồ thông minh', revenue: '266.9M', orders: 89, growth: '+18%' },
-    { name: 'Chocolate handmade', revenue: '105.3M', orders: 234, growth: '+12%' },
-    { name: 'Nước hoa nữ cao cấp', revenue: '96.0M', orders: 80, growth: '+8%' },
-    { name: 'Túi xách da thật', revenue: '78.5M', orders: 67, growth: '+15%' }
-  ];
-
-  const topCategories = [
-    { name: 'Hoa tươi', revenue: '45.2M', percentage: 36, growth: '+12%' },
-    { name: 'Công nghệ', revenue: '38.7M', percentage: 31, growth: '+18%' },
-    { name: 'Thời trang', revenue: '22.1M', percentage: 18, growth: '+8%' },
-    { name: 'Làm đẹp', revenue: '12.8M', percentage: 10, growth: '+15%' },
-    { name: 'Đồ ăn', revenue: '6.2M', percentage: 5, growth: '+5%' }
-  ];
-
-  const recentActivity = [
-    { time: '10:30', event: 'Đơn hàng mới #GH123456', amount: '299.000đ', type: 'order' },
-    { time: '10:15', event: 'Khách hàng mới đăng ký', amount: '', type: 'user' },
-    { time: '09:45', event: 'Thanh toán thành công #GH123455', amount: '2.999.000đ', type: 'payment' },
-    { time: '09:30', event: 'Sản phẩm được thêm vào wishlist', amount: '', type: 'wishlist' },
-    { time: '09:15', event: 'Đánh giá 5 sao cho sản phẩm', amount: '', type: 'review' }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const [statsRes, salesRes, productRes] = await Promise.all([
+          apiService.getAdminStats(),
+          apiService.getSalesAnalytics(selectedPeriod),
+          apiService.getProductAnalytics()
+        ]);
+        setStats((statsRes as any).stats);
+        setSales(salesRes as any[]);
+        setTopProducts((productRes as any).topProducts || []);
+        setTopCategories((productRes as any).categoryPerformance || []);
+        setRecentActivity((statsRes as any).activities || []);
+      } catch (err: any) {
+        setError(err.message || 'Lỗi tải dữ liệu');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [selectedPeriod]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -89,6 +61,27 @@ export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
         return <Package className="h-4 w-4 text-gray-600" />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#49bbbd] mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải dữ liệu thống kê...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,43 +122,91 @@ export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Stats Cards trên cùng */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <div className="flex items-baseline">
-                      <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                      {stat.unit && <span className="ml-1 text-sm text-gray-500">{stat.unit}</span>}
-                    </div>
-                    <div className="flex items-center mt-1">
-                      {stat.changeType === 'increase' ? (
-                        <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                      )}
-                      <span className={`text-sm ${stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'}`}>
-                        {stat.change}
-                      </span>
-                      <span className="text-sm text-gray-500 ml-1">so với kỳ trước</span>
-                    </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Tổng doanh thu</p>
+                  <div className="flex items-baseline">
+                    <p className="text-2xl font-bold text-gray-900">{stats ? stats.totalRevenue.toLocaleString('vi-VN') : 0}</p>
+                    <span className="ml-1 text-sm text-gray-500">VNĐ</span>
                   </div>
-                  <div className={`${stat.color}`}>
-                    {stat.icon}
+                  <div className="flex items-center mt-1">
+                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                    <span className="text-sm text-green-600">+{stats ? stats.todayRevenue.toLocaleString('vi-VN') : 0} hôm nay</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <div className="text-green-600">
+                  <DollarSign className="h-6 w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Đơn hàng</p>
+                  <div className="flex items-baseline">
+                    <p className="text-2xl font-bold text-gray-900">{stats ? stats.totalOrders : 0}</p>
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <TrendingUp className="h-4 w-4 text-blue-500 mr-1" />
+                    <span className="text-sm text-blue-600">+{stats ? stats.todayOrders : 0} hôm nay</span>
+                  </div>
+                </div>
+                <div className="text-blue-600">
+                  <ShoppingCart className="h-6 w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Khách hàng mới</p>
+                  <div className="flex items-baseline">
+                    <p className="text-2xl font-bold text-gray-900">{stats ? stats.newCustomers : 0}</p>
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <TrendingUp className="h-4 w-4 text-purple-500 mr-1" />
+                    <span className="text-sm text-purple-600">Tỷ lệ chuyển đổi: {stats ? stats.conversionRate : 0}%</span>
+                  </div>
+                </div>
+                <div className="text-purple-600">
+                  <Users className="h-6 w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Sản phẩm bán ra</p>
+                  <div className="flex items-baseline">
+                    <p className="text-2xl font-bold text-gray-900">{topProducts.reduce((sum, p) => sum + Number(p.total_sold || 0), 0)}</p>
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <TrendingUp className="h-4 w-4 text-orange-500 mr-1" />
+                    <span className="text-sm text-orange-600">Top 1: {topProducts[0]?.name || ''}</span>
+                  </div>
+                </div>
+                <div className="text-orange-600">
+                  <Package className="h-6 w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-
+        {/* Grid 2 cột bên dưới */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Revenue Chart Placeholder */}
+            {/* Revenue Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="font-['Poppins',Helvetica]">Biểu đồ doanh thu</CardTitle>
@@ -180,7 +221,6 @@ export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
                 </div>
               </CardContent>
             </Card>
-
             {/* Top Products */}
             <Card>
               <CardHeader>
@@ -196,22 +236,18 @@ export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{product.name}</p>
-                          <p className="text-sm text-gray-600">{product.orders} đơn hàng</p>
+                          <p className="text-sm text-gray-600">{product.total_sold} sản phẩm • {Number(product.revenue).toLocaleString('vi-VN')}đ</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-[#49bbbd]">{product.revenue} VNĐ</p>
-                        <p className="text-sm text-green-600">{product.growth}</p>
-                      </div>
+                      <span className="text-green-600 font-semibold">{Math.round((Number(product.revenue) / (stats?.totalRevenue || 1)) * 100)}%</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
           </div>
-
           {/* Right Column */}
-          <div className="space-y-6">
+          <div className="space-y-8 flex flex-col h-full">
             {/* Top Categories */}
             <Card>
               <CardHeader>
@@ -219,28 +255,18 @@ export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {topCategories.map((category, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900">{category.name}</span>
-                        <span className="text-sm text-gray-600">{category.percentage}%</span>
+                  {topCategories.map((cat, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900">{cat.name}</p>
+                        <p className="text-sm text-gray-600">{cat.items_sold} sản phẩm • {Number(cat.revenue).toLocaleString('vi-VN')}đ</p>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-[#49bbbd] h-2 rounded-full" 
-                          style={{ width: `${category.percentage}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">{category.revenue} VNĐ</span>
-                        <span className="text-sm text-green-600">{category.growth}</span>
-                      </div>
+                      <span className="text-blue-600 font-semibold">{Math.round((Number(cat.revenue) / (stats?.totalRevenue || 1)) * 100)}%</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-
             {/* Recent Activity */}
             <Card>
               <CardHeader>
@@ -248,47 +274,41 @@ export const Analytics = ({ onBack }: AnalyticsProps): JSX.Element => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 mt-1">
-                        {getActivityIcon(activity.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">{activity.event}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-gray-500">{activity.time}</span>
-                          {activity.amount && (
-                            <span className="text-sm font-medium text-[#49bbbd]">{activity.amount}</span>
-                          )}
-                        </div>
-                      </div>
+                  {recentActivity.length === 0 && <p className="text-gray-500">Không có hoạt động gần đây</p>}
+                  {recentActivity.map((act, idx) => (
+                    <div key={idx} className="flex items-center space-x-3">
+                      {getActivityIcon(act.type || 'order')}
+                      <span className="text-gray-800">{act.message || act.event}</span>
+                      {act.amount && <span className="ml-auto text-green-600">{act.amount}</span>}
+                      {act.timeAgo && <span className="ml-auto text-gray-400 text-xs">{act.timeAgo}</span>}
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-
             {/* Quick Stats */}
             <Card>
               <CardHeader>
                 <CardTitle className="font-['Poppins',Helvetica]">Thống kê nhanh</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Tỷ lệ chuyển đổi</span>
-                  <span className="font-medium text-green-600">3.2%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Giá trị đơn hàng TB</span>
-                  <span className="font-medium">1.2M VNĐ</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Khách hàng quay lại</span>
-                  <span className="font-medium text-blue-600">68%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Đánh giá trung bình</span>
-                  <span className="font-medium text-yellow-600">4.8/5</span>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Đơn hàng hôm nay</span>
+                    <span className="font-bold text-lg">{stats?.todayOrders ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Doanh thu hôm nay</span>
+                    <span className="font-bold text-lg text-[#49bbbd]">{stats?.todayRevenue?.toLocaleString('vi-VN') ?? 0} VNĐ</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Khách hàng mới</span>
+                    <span className="font-bold text-lg">{stats?.newCustomers ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Tỷ lệ chuyển đổi</span>
+                    <span className="font-bold text-lg text-green-600">{stats?.conversionRate ?? 0}%</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

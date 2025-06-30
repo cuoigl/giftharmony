@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import { useLocation } from "react-router-dom";
 
 interface OrderSuccessProps {
   onBackToDashboard: () => void;
@@ -25,16 +26,53 @@ export const OrderSuccess = ({
   onBackToDashboard,
   onViewOrders,
 }: OrderSuccessProps): JSX.Element => {
-  const orderInfo = {
-    id: `GH${Date.now().toString().slice(-6)}`,
-    date: new Date().toLocaleDateString("vi-VN"),
-    estimatedDelivery: new Date(
-      Date.now() + 2 * 24 * 60 * 60 * 1000
-    ).toLocaleDateString("vi-VN"),
-    total: "3.748.000đ",
-    items: 3,
-    status: "Đang xử lý",
-  };
+  const location = useLocation();
+  const order = location.state?.order;
+
+  // Fallback nếu không có order (truy cập trực tiếp)
+  const orderInfo = order
+    ? {
+        id: order.id || order.order_code || `GH${Date.now().toString().slice(-6)}`,
+        date: order.created_at
+          ? new Date(order.created_at).toLocaleDateString("vi-VN")
+          : new Date().toLocaleDateString("vi-VN"),
+        estimatedDelivery: order.estimated_delivery
+          ? new Date(order.estimated_delivery).toLocaleDateString("vi-VN")
+          : new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString("vi-VN"),
+        total:
+          typeof order.total_amount === "number"
+            ? order.total_amount.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
+            : order.total_amount || "-",
+        shipping_fee:
+          typeof order.shipping_fee === "number"
+            ? order.shipping_fee.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
+            : order.shipping_fee || "0đ",
+        discount:
+          typeof order.discount === "number"
+            ? order.discount.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
+            : order.discount || "0đ",
+        promo_code: order.promo_code || "",
+        final_total:
+          typeof order.final_total === "number"
+            ? order.final_total.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
+            : order.final_total || order.total || "-",
+        items: order.items?.length || order.items_count || 1,
+        status: order.status || "Đang xử lý",
+      }
+    : {
+        id: `GH${Date.now().toString().slice(-6)}`,
+        date: new Date().toLocaleDateString("vi-VN"),
+        estimatedDelivery: new Date(
+          Date.now() + 2 * 24 * 60 * 60 * 1000
+        ).toLocaleDateString("vi-VN"),
+        total: "3.748.000đ",
+        shipping_fee: "0đ",
+        discount: "0đ",
+        promo_code: "",
+        final_total: "3.748.000đ",
+        items: 3,
+        status: "Đang xử lý",
+      };
 
   return (
     <div className="min-h-screen bg-[#fffefc] flex items-center justify-center p-4">
@@ -74,12 +112,28 @@ export const OrderSuccess = ({
                 <p className="font-medium">{orderInfo.date}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Tổng tiền</p>
+                <p className="text-sm text-gray-600">Tổng tiền sản phẩm</p>
                 <p className="font-semibold text-lg">{orderInfo.total}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Phí vận chuyển</p>
+                <p className="font-medium">{orderInfo.shipping_fee}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Giảm giá</p>
+                <p className="font-medium">-{orderInfo.discount}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Mã khuyến mãi</p>
+                <p className="font-medium">{orderInfo.promo_code || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Số sản phẩm</p>
                 <p className="font-medium">{orderInfo.items} sản phẩm</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Tổng thanh toán</p>
+                <p className="font-bold text-lg text-[#49bbbd]">{orderInfo.final_total}</p>
               </div>
             </div>
 

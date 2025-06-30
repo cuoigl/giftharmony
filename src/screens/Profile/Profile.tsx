@@ -25,6 +25,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../components/ui/toast";
 import { apiService } from "../../services/api";
 import { User, UserProfile } from "../../types";
+import { useVietnamAddress } from "../../hooks/useVietnamAddress";
 
 interface ProfileProps {
   onBack: () => void;
@@ -41,6 +42,17 @@ export const Profile = ({
 }: ProfileProps): JSX.Element => {
   const { user, updateProfile, loadCurrentUser, isLoading } = useAuth();
   const { addToast } = useToast();
+  const {
+    provinces,
+    districts,
+    wards,
+    selectedProvince,
+    setSelectedProvince,
+    selectedDistrict,
+    setSelectedDistrict,
+    selectedWard,
+    setSelectedWard,
+  } = useVietnamAddress();
 
   const [isEditing, setIsEditing] = useState(false);
   // Khởi tạo profile rỗng, chỉ set khi user context thay đổi
@@ -71,8 +83,8 @@ export const Profile = ({
         // Đảm bảo response là mảng đơn hàng đúng format backend trả về
         const ordersArray = Array.isArray(response)
           ? response
-          : Array.isArray(response?.orders)
-          ? response.orders
+          : (response && typeof response === 'object' && Array.isArray((response as any).orders))
+          ? (response as any).orders
           : [];
         const statusMap: Record<string, string> = {
           pending: "Đang xử lý",
@@ -261,7 +273,7 @@ export const Profile = ({
     // eslint-disable-next-line
   }, []);
 
-  // Sync profile state khi user context thay đổi
+  // Đồng bộ state profile với hook địa chỉ khi user context thay đổi
   useEffect(() => {
     if (user) {
       setProfile({
@@ -275,8 +287,22 @@ export const Profile = ({
         birthDate: user.birthDate || "",
         gender: user.gender || "",
       });
+      // Nếu có city/district/ward thì set code tương ứng cho hook
+      if (user.city) {
+        const foundProvince = provinces.find((p) => p.name === user.city);
+        if (foundProvince) setSelectedProvince(foundProvince.code);
+      }
+      if (user.district) {
+        const foundDistrict = districts.find((d) => d.name === user.district);
+        if (foundDistrict) setSelectedDistrict(foundDistrict.code);
+      }
+      if (user.ward) {
+        const foundWard = wards.find((w) => w.name === user.ward);
+        if (foundWard) setSelectedWard(foundWard.code);
+      }
     }
-  }, [user]);
+    // eslint-disable-next-line
+  }, [user, provinces, districts, wards]);
 
   // Mốc điểm các hạng thành viên
   const levelThresholds = [
@@ -308,9 +334,9 @@ export const Profile = ({
   return (
     <div className="min-h-screen bg-[#fffefc]">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-gradient-to-r from-[#49bbbd] to-[#3a9a9c] shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
+          <div className="flex items-center h-20">
             <Button
               variant="ghost"
               size="icon"
@@ -319,7 +345,7 @@ export const Profile = ({
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold text-gray-900 font-['Poppins',Helvetica]">
+            <h1 className="text-2xl font-bold text-white font-['Poppins',Helvetica] tracking-wide drop-shadow-lg">
               Hồ sơ cá nhân
             </h1>
           </div>
@@ -331,53 +357,48 @@ export const Profile = ({
           {/* Left Column - Profile Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Header */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-6">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                      {user?.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.first_name || ""}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <UserIcon className="h-16 w-16 text-gray-400" />
-                      )}
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="absolute -bottom-1 -right-1 bg-white shadow-md hover:bg-gray-50 h-8 w-8"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 font-['Poppins',Helvetica]">
-                      {user
-                        ? `${user.first_name || ""} ${
-                            user.last_name || ""
-                          }`.trim()
-                        : ""}
-                    </h2>
-                    <p className="text-gray-600">{user?.email}</p>
-                    <div className="flex items-center mt-2">
-                      <span className="inline-block px-3 py-1 bg-[#49bbbd] text-white text-sm rounded-full">
-                        {user?.level}
-                      </span>
-                    </div>
+            <Card className="overflow-visible">
+              <CardContent className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8 bg-gradient-to-br from-[#f0fdfa] to-[#fffefc] rounded-2xl shadow-lg">
+                <div className="relative group">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#49bbbd] shadow-xl overflow-hidden bg-gradient-to-br from-[#49bbbd] to-[#3a9a9c] flex items-center justify-center transition-transform group-hover:scale-105">
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.first_name || ""}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="h-20 w-20 md:h-28 md:w-28 text-white/70" />
+                    )}
                   </div>
                   <Button
-                    onClick={() => setIsEditing(!isEditing)}
-                    variant={isEditing ? "outline" : "ghost"}
-                    className="flex items-center"
+                    size="icon"
+                    variant="ghost"
+                    className="absolute bottom-2 right-2 bg-white/80 shadow-md hover:bg-gray-50 h-10 w-10 border border-[#49bbbd] group-hover:scale-110 transition-transform"
+                    title="Đổi ảnh đại diện"
                   >
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    {isEditing ? "Hủy" : "Chỉnh sửa"}
+                    <Camera className="h-5 w-5 text-[#49bbbd]" />
                   </Button>
                 </div>
+                <div className="flex-1 flex flex-col gap-2 items-center md:items-start">
+                  <h2 className="text-3xl font-bold text-gray-900 font-['Poppins',Helvetica] tracking-wide">
+                    {user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : ""}
+                  </h2>
+                  <p className="text-gray-600 flex items-center gap-2"><Mail className="h-4 w-4 mr-1 text-[#49bbbd]" />{user?.email}</p>
+                  <div className="flex items-center mt-2 gap-2">
+                    <span className="inline-block px-4 py-1 bg-gradient-to-r from-[#49bbbd] to-[#3a9a9c] text-white text-base rounded-full font-semibold shadow-md animate-pulse">
+                      <Star className="inline h-4 w-4 mr-1 -mt-1" />{user?.level}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setIsEditing(!isEditing)}
+                  variant={isEditing ? "outline" : "ghost"}
+                  className="flex items-center mt-4 md:mt-0"
+                >
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  {isEditing ? "Hủy" : "Chỉnh sửa"}
+                </Button>
               </CardContent>
             </Card>
 
@@ -514,16 +535,20 @@ export const Profile = ({
                     </label>
                     {isEditing ? (
                       <select
-                        value={profile.city}
-                        onChange={(e) =>
-                          handleInputChange("city", e.target.value)
-                        }
+                        value={selectedProvince}
+                        onChange={(e) => {
+                          setSelectedProvince(e.target.value);
+                          const province = provinces.find((p) => p.code === e.target.value);
+                          handleInputChange("city", province ? province.name : "");
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                       >
-                        <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                        <option value="Hà Nội">Hà Nội</option>
-                        <option value="Đà Nẵng">Đà Nẵng</option>
-                        <option value="Cần Thơ">Cần Thơ</option>
+                        <option value="">Chọn tỉnh/thành phố</option>
+                        {provinces.map((province) => (
+                          <option key={province.code} value={province.code}>
+                            {province.name}
+                          </option>
+                        ))}
                       </select>
                     ) : (
                       <p className="py-2 text-gray-900">{profile.city}</p>
@@ -545,22 +570,44 @@ export const Profile = ({
                         }
                         className="mb-2"
                       />
-                      <Input
-                        placeholder="Phường/Xã"
-                        value={profile.ward}
-                        onChange={(e) =>
-                          handleInputChange("ward", e.target.value)
-                        }
-                        className="mb-2"
-                      />
-                      <Input
-                        placeholder="Quận/Huyện"
-                        value={profile.district}
-                        onChange={(e) =>
-                          handleInputChange("district", e.target.value)
-                        }
-                        className="mb-2"
-                      />
+                      {isEditing ? (
+                        <select
+                          value={selectedWard}
+                          onChange={(e) => {
+                            setSelectedWard(e.target.value);
+                            const ward = wards.find((w) => w.code === e.target.value);
+                            handleInputChange("ward", ward ? ward.name : "");
+                          }}
+                          className="mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
+                          disabled={!selectedDistrict}
+                        >
+                          <option value="">Chọn phường/xã</option>
+                          {wards.map((ward) => (
+                            <option key={ward.code} value={ward.code}>
+                              {ward.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                      {isEditing ? (
+                        <select
+                          value={selectedDistrict}
+                          onChange={(e) => {
+                            setSelectedDistrict(e.target.value);
+                            const district = districts.find((d) => d.code === e.target.value);
+                            handleInputChange("district", district ? district.name : "");
+                          }}
+                          className="mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
+                          disabled={!selectedProvince}
+                        >
+                          <option value="">Chọn quận/huyện</option>
+                          {districts.map((district) => (
+                            <option key={district.code} value={district.code}>
+                              {district.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
                     </>
                   ) : (
                     <p className="py-2 text-gray-900">

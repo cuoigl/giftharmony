@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface InventoryManagementProps {
   onBack: () => void;
@@ -29,65 +30,43 @@ export const InventoryManagement = ({ onBack }: InventoryManagementProps): JSX.E
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-  const [inventory] = useState<InventoryItem[]>([
-    {
-      id: 1,
-      name: 'Hoa hồng đỏ cao cấp',
-      sku: 'FL001',
-      category: 'Hoa tươi',
-      currentStock: 5,
-      minStock: 10,
-      maxStock: 50,
-      price: 299000,
-      supplier: 'Đà Lạt Flowers',
-      lastRestocked: '10/01/2025',
-      status: 'low_stock',
-      image: 'https://images.pexels.com/photos/56866/garden-rose-red-pink-56866.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1'
-    },
-    {
-      id: 2,
-      name: 'Đồng hồ thông minh',
-      sku: 'TC001',
-      category: 'Công nghệ',
-      currentStock: 0,
-      minStock: 5,
-      maxStock: 20,
-      price: 2999000,
-      supplier: 'Tech Supplier',
-      lastRestocked: '05/01/2025',
-      status: 'out_of_stock',
-      image: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1'
-    },
-    {
-      id: 3,
-      name: 'Chocolate handmade',
-      sku: 'FD001',
-      category: 'Đồ ăn',
-      currentStock: 25,
-      minStock: 15,
-      maxStock: 30,
-      price: 450000,
-      supplier: 'Sweet Dreams',
-      lastRestocked: '12/01/2025',
-      status: 'in_stock',
-      image: 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1'
-    },
-    {
-      id: 4,
-      name: 'Nước hoa nữ cao cấp',
-      sku: 'BT001',
-      category: 'Làm đẹp',
-      currentStock: 45,
-      minStock: 10,
-      maxStock: 30,
-      price: 1200000,
-      supplier: 'Beauty World',
-      lastRestocked: '08/01/2025',
-      status: 'overstocked',
-      image: 'https://images.pexels.com/photos/1190829/pexels-photo-1190829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1'
-    }
-  ]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+
+  React.useEffect(() => {
+    const fetchInventory = async () => {
+      setLoading(true);
+      try {
+        const res: any = await apiService.getProducts();
+        // Map dữ liệu từ API về đúng định dạng InventoryItem
+        const mapped = res.products.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku || '',
+          category: p.category_name || '',
+          currentStock: p.stock_quantity ?? 0,
+          minStock: p.min_stock ?? 0,
+          maxStock: p.max_stock ?? 0,
+          price: p.price ?? 0,
+          supplier: p.supplier || '',
+          lastRestocked: p.last_restocked ? new Date(p.last_restocked).toLocaleDateString('vi-VN') : '',
+          status: p.stock_quantity === 0 ? 'out_of_stock' : (p.stock_quantity < (p.min_stock ?? 10) ? 'low_stock' : (p.stock_quantity > (p.max_stock ?? 100) ? 'overstocked' : 'in_stock')),
+          image: p.image_url || '',
+        }));
+        setInventory(mapped);
+      } catch (error: any) {
+        addToast({
+          type: 'error',
+          title: 'Lỗi tải danh sách tồn kho',
+          description: error.message || 'Không thể tải dữ liệu từ server',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, [addToast]);
 
   const categories = ['all', 'Hoa tươi', 'Công nghệ', 'Đồ ăn', 'Làm đẹp', 'Thời trang'];
   const statusOptions = [
@@ -163,6 +142,17 @@ export const InventoryManagement = ({ onBack }: InventoryManagementProps): JSX.E
   const lowStockCount = inventory.filter(item => item.status === 'low_stock').length;
   const outOfStockCount = inventory.filter(item => item.status === 'out_of_stock').length;
   const totalValue = inventory.reduce((sum, item) => sum + (item.currentStock * item.price), 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#49bbbd] mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải danh sách tồn kho...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -302,12 +292,11 @@ export const InventoryManagement = ({ onBack }: InventoryManagementProps): JSX.E
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Sản phẩm</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">SKU</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Tồn kho</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Min/Max</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Ảnh</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Tên sản phẩm</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Danh mục</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">Số lượng tồn kho</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Giá</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Nhà cung cấp</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Trạng thái</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">Thao tác</th>
                   </tr>
@@ -316,21 +305,20 @@ export const InventoryManagement = ({ onBack }: InventoryManagementProps): JSX.E
                   {filteredInventory.map((item) => (
                     <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{item.name}</p>
-                            <p className="text-sm text-gray-500">{item.category}</p>
-                          </div>
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       </td>
-                      <td className="py-4 px-4 font-mono text-sm">{item.sku}</td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{item.name}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-gray-600">{item.category}</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-2">
                           {getStockIcon(item.status)}
@@ -342,11 +330,7 @@ export const InventoryManagement = ({ onBack }: InventoryManagementProps): JSX.E
                           </span>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-sm text-gray-600">
-                        {item.minStock} / {item.maxStock}
-                      </td>
                       <td className="py-4 px-4 font-medium">{formatPrice(item.price)}</td>
-                      <td className="py-4 px-4 text-sm text-gray-600">{item.supplier}</td>
                       <td className="py-4 px-4">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(item.status)}`}>
                           {getStatusText(item.status)}

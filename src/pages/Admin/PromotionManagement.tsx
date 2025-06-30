@@ -4,10 +4,13 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface PromotionManagementProps {
   onBack: () => void;
 }
+
+type PromotionStatus = 'active' | 'inactive' | 'expired' | 'scheduled';
 
 interface Promotion {
   id: number;
@@ -21,7 +24,7 @@ interface Promotion {
   endDate: string;
   usageLimit: number;
   usageCount: number;
-  status: 'active' | 'inactive' | 'expired' | 'scheduled';
+  status: PromotionStatus;
   description: string;
 }
 
@@ -36,7 +39,7 @@ interface PromotionForm {
   endDate: string;
   usageLimit: string;
   description: string;
-  status: 'active' | 'inactive';
+  status: PromotionStatus;
 }
 
 export const PromotionManagement = ({ onBack }: PromotionManagementProps): JSX.Element => {
@@ -47,6 +50,7 @@ export const PromotionManagement = ({ onBack }: PromotionManagementProps): JSX.E
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState<PromotionForm>({
     name: '',
@@ -62,66 +66,42 @@ export const PromotionManagement = ({ onBack }: PromotionManagementProps): JSX.E
     status: 'active'
   });
 
-  const [promotions, setPromotions] = useState<Promotion[]>([
-    {
-      id: 1,
-      name: 'Valentine Sale 2025',
-      code: 'VALENTINE20',
-      type: 'percentage',
-      value: 20,
-      minOrder: 500000,
-      maxDiscount: 200000,
-      startDate: '10/02/2025',
-      endDate: '20/02/2025',
-      usageLimit: 1000,
-      usageCount: 234,
-      status: 'active',
-      description: 'Giảm 20% cho tất cả sản phẩm nhân dịp Valentine'
-    },
-    {
-      id: 2,
-      name: 'Miễn phí vận chuyển',
-      code: 'FREESHIP',
-      type: 'free_shipping',
-      value: 0,
-      minOrder: 300000,
-      startDate: '01/01/2025',
-      endDate: '31/12/2025',
-      usageLimit: 5000,
-      usageCount: 1567,
-      status: 'active',
-      description: 'Miễn phí vận chuyển cho đơn hàng từ 300k'
-    },
-    {
-      id: 3,
-      name: 'Khách hàng mới',
-      code: 'NEWUSER15',
-      type: 'percentage',
-      value: 15,
-      minOrder: 200000,
-      maxDiscount: 150000,
-      startDate: '01/01/2025',
-      endDate: '31/03/2025',
-      usageLimit: 2000,
-      usageCount: 456,
-      status: 'active',
-      description: 'Giảm 15% cho khách hàng đăng ký mới'
-    },
-    {
-      id: 4,
-      name: 'Tết Nguyên Đán',
-      code: 'TET2025',
-      type: 'fixed_amount',
-      value: 100000,
-      minOrder: 1000000,
-      startDate: '25/01/2025',
-      endDate: '05/02/2025',
-      usageLimit: 500,
-      usageCount: 89,
-      status: 'expired',
-      description: 'Giảm 100k cho đơn hàng từ 1 triệu'
-    }
-  ]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+
+  React.useEffect(() => {
+    const fetchPromotions = async () => {
+      setLoading(true);
+      try {
+        const res: any = await apiService.getPromotions();
+        // Map dữ liệu từ API về đúng định dạng Promotion
+        const mapped = res.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          type: p.type,
+          value: Number(p.value),
+          minOrder: Number(p.min_order),
+          maxDiscount: p.max_discount ? Number(p.max_discount) : undefined,
+          startDate: p.start_date ? p.start_date.slice(0, 10) : '',
+          endDate: p.end_date ? p.end_date.slice(0, 10) : '',
+          usageLimit: Number(p.usage_limit),
+          usageCount: Number(p.usage_count),
+          status: p.status,
+          description: p.description || '',
+        }));
+        setPromotions(mapped);
+      } catch (error: any) {
+        addToast({
+          type: 'error',
+          title: 'Lỗi tải danh sách khuyến mãi',
+          description: error.message || 'Không thể tải dữ liệu từ server',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPromotions();
+  }, [addToast]);
 
   const statusOptions = [
     { value: 'all', label: 'Tất cả trạng thái' },
@@ -211,6 +191,25 @@ export const PromotionManagement = ({ onBack }: PromotionManagementProps): JSX.E
     return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
   };
 
+  function formatDateForSQL(dateStr: string) {
+    if (!dateStr) return null;
+    // Nếu là yyyy-MM-dd thì trả về luôn
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // Nếu là dd/MM/yyyy thì chuyển
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split('/');
+      return `${year}-${month}-${day}`;
+    }
+    return null; // Không đúng định dạng
+  }
+
+  function isValidDateString(dateStr: string) {
+    return (
+      /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ||
+      /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)
+    );
+  }
+
   const validateForm = () => {
     if (!formData.name.trim()) {
       addToast({
@@ -281,74 +280,61 @@ export const PromotionManagement = ({ onBack }: PromotionManagementProps): JSX.E
     return true;
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    const value = formData.type === 'free_shipping' ? 0 : parseFloat(formData.value);
-    const minOrder = parseFloat(formData.minOrder) || 0;
-    const maxDiscount = formData.maxDiscount ? parseFloat(formData.maxDiscount) : undefined;
-    const usageLimit = parseInt(formData.usageLimit) || 1000;
-
-    if (editingPromotion) {
-      // Update existing promotion
-      setPromotions(prev => prev.map(p => 
-        p.id === editingPromotion.id 
-          ? {
-              ...p,
-              name: formData.name,
-              code: formData.code.toUpperCase(),
-              type: formData.type,
-              value,
-              minOrder,
-              maxDiscount,
-              startDate: new Date(formData.startDate).toLocaleDateString('vi-VN'),
-              endDate: new Date(formData.endDate).toLocaleDateString('vi-VN'),
-              usageLimit,
-              description: formData.description,
-              status: formData.status
-            }
-          : p
-      ));
-      
-      addToast({
-        type: 'success',
-        title: 'Cập nhật thành công',
-        description: `Khuyến mãi ${formData.name} đã được cập nhật`,
-        duration: 3000
+    if (!validateForm()) return;
+    try {
+      if (editingPromotion) {
+        // Sửa khuyến mãi
+        await apiService.updatePromotion(editingPromotion.id, {
+          ...formData,
+          value: Number(formData.value),
+          min_order: Number(formData.minOrder),
+          max_discount: formData.maxDiscount ? Number(formData.maxDiscount) : null,
+          usage_limit: Number(formData.usageLimit),
+          start_date: formatDateForSQL(formData.startDate),
+          end_date: formatDateForSQL(formData.endDate),
+        });
+        addToast({ type: 'success', title: 'Cập nhật thành công', description: 'Khuyến mãi đã được cập nhật!' });
+      } else {
+        // Thêm mới khuyến mãi
+        await apiService.createPromotion({
+          ...formData,
+          value: Number(formData.value),
+          min_order: Number(formData.minOrder),
+          max_discount: formData.maxDiscount ? Number(formData.maxDiscount) : null,
+          usage_limit: Number(formData.usageLimit),
+          start_date: formatDateForSQL(formData.startDate),
+          end_date: formatDateForSQL(formData.endDate),
+        });
+        addToast({ type: 'success', title: 'Thêm thành công', description: 'Khuyến mãi mới đã được thêm!' });
+      }
+      setShowAddModal(false);
+      setEditingPromotion(null);
+      setFormData({
+        name: '', code: '', type: 'percentage', value: '', minOrder: '', maxDiscount: '', startDate: '', endDate: '', usageLimit: '', description: '', status: 'active'
       });
-    } else {
-      // Add new promotion
-      const newPromotion: Promotion = {
-        id: Math.max(...promotions.map(p => p.id)) + 1,
-        name: formData.name,
-        code: formData.code.toUpperCase(),
-        type: formData.type,
-        value,
-        minOrder,
-        maxDiscount,
-        startDate: new Date(formData.startDate).toLocaleDateString('vi-VN'),
-        endDate: new Date(formData.endDate).toLocaleDateString('vi-VN'),
-        usageLimit,
-        usageCount: 0,
-        description: formData.description,
-        status: formData.status
-      };
-
-      setPromotions(prev => [...prev, newPromotion]);
-      
-      addToast({
-        type: 'success',
-        title: 'Tạo thành công',
-        description: `Khuyến mãi ${formData.name} đã được tạo`,
-        duration: 3000
-      });
+      // Reload danh sách
+      const res: any = await apiService.getPromotions();
+      const mapped = res.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        type: p.type,
+        value: Number(p.value),
+        minOrder: Number(p.min_order),
+        maxDiscount: p.max_discount ? Number(p.max_discount) : undefined,
+        startDate: p.start_date ? p.start_date.slice(0, 10) : '',
+        endDate: p.end_date ? p.end_date.slice(0, 10) : '',
+        usageLimit: Number(p.usage_limit),
+        usageCount: Number(p.usage_count),
+        status: p.status,
+        description: p.description || '',
+      }));
+      setPromotions(mapped);
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: error.message || 'Không thể lưu khuyến mãi' });
     }
-
-    resetForm();
   };
 
   const resetForm = () => {
@@ -396,31 +382,113 @@ export const PromotionManagement = ({ onBack }: PromotionManagementProps): JSX.E
     setShowDetailModal(true);
   };
 
-  const handleDeletePromotion = (promotionId: number) => {
-    setPromotions(prev => prev.filter(p => p.id !== promotionId));
-    addToast({
-      type: 'success',
-      title: 'Đã xóa khuyến mãi',
-      description: `Khuyến mãi #${promotionId} đã được xóa`,
-      duration: 3000
-    });
+  const handleDeletePromotion = async (promotionId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa khuyến mãi này?')) return;
+    try {
+      await apiService.deletePromotion(promotionId);
+      addToast({ type: 'success', title: 'Đã xóa', description: 'Khuyến mãi đã được xóa!' });
+      // Reload danh sách
+      const res: any = await apiService.getPromotions();
+      const mapped = res.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        type: p.type,
+        value: Number(p.value),
+        minOrder: Number(p.min_order),
+        maxDiscount: p.max_discount ? Number(p.max_discount) : undefined,
+        startDate: p.start_date ? p.start_date.slice(0, 10) : '',
+        endDate: p.end_date ? p.end_date.slice(0, 10) : '',
+        usageLimit: Number(p.usage_limit),
+        usageCount: Number(p.usage_count),
+        status: p.status,
+        description: p.description || '',
+      }));
+      setPromotions(mapped);
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: error.message || 'Không thể xóa khuyến mãi' });
+    }
   };
 
-  const handleToggleStatus = (promotionId: number, currentStatus: string) => {
+  const handleToggleStatus = async (promotionId: number, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    setPromotions(prev => prev.map(p => 
-      p.id === promotionId ? { ...p, status: newStatus } : p
-    ));
-    addToast({
-      type: 'success',
-      title: 'Cập nhật trạng thái',
-      description: `Khuyến mãi #${promotionId} đã được ${newStatus === 'active' ? 'kích hoạt' : 'tạm dừng'}`,
-      duration: 3000
-    });
+    const promotion = promotions.find(p => p.id === promotionId);
+    if (!promotion) return;
+
+    // Kiểm tra ngày hợp lệ
+    if (
+      !promotion.startDate ||
+      !promotion.endDate ||
+      !isValidDateString(promotion.startDate) ||
+      !isValidDateString(promotion.endDate)
+    ) {
+      addToast({
+        type: 'error',
+        title: 'Thiếu hoặc sai định dạng ngày',
+        description: 'Khuyến mãi này chưa có ngày bắt đầu/kết thúc hợp lệ. Vui lòng cập nhật đầy đủ trước khi đổi trạng thái.',
+        duration: 4000
+      });
+      return;
+    }
+
+    const updatePayload = {
+      name: promotion.name,
+      code: promotion.code,
+      type: promotion.type,
+      value: promotion.value,
+      min_order: promotion.minOrder,
+      max_discount: promotion.maxDiscount || null,
+      start_date: formatDateForSQL(promotion.startDate),
+      end_date: formatDateForSQL(promotion.endDate),
+      usage_limit: promotion.usageLimit,
+      description: promotion.description,
+      status: newStatus
+    };
+
+    try {
+      await apiService.updatePromotion(promotionId, updatePayload);
+      addToast({
+        type: 'success',
+        title: 'Cập nhật trạng thái',
+        description: `Khuyến mãi #${promotionId} đã được ${newStatus === 'active' ? 'kích hoạt' : 'tạm dừng'}`,
+        duration: 3000
+      });
+      // Reload danh sách
+      const res: any = await apiService.getPromotions();
+      const mapped = res.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+        type: p.type,
+        value: Number(p.value),
+        minOrder: Number(p.min_order),
+        maxDiscount: p.max_discount ? Number(p.max_discount) : undefined,
+        startDate: p.start_date ? p.start_date.slice(0, 10) : '',
+        endDate: p.end_date ? p.end_date.slice(0, 10) : '',
+        usageLimit: Number(p.usage_limit),
+        usageCount: Number(p.usage_count),
+        status: p.status,
+        description: p.description || '',
+      }));
+      setPromotions(mapped);
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: error.message || 'Không thể cập nhật trạng thái' });
+    }
   };
 
   const activePromotions = promotions.filter(p => p.status === 'active').length;
   const totalUsage = promotions.reduce((sum, p) => sum + p.usageCount, 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#49bbbd] mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải danh sách khuyến mãi...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

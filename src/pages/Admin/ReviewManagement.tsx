@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, Filter, Eye, Trash2, Star, ThumbsUp, Flag, MessageCircle, X, User, Calendar, Package } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../components/ui/toast';
+import { apiService } from '../../services/api';
 
 interface ReviewManagementProps {
   onBack: () => void;
@@ -36,90 +37,43 @@ export const ReviewManagement = ({ onBack }: ReviewManagementProps): JSX.Element
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: 1,
-      productId: 1,
-      productName: 'Hoa hồng đỏ cao cấp',
-      productImage: 'https://images.pexels.com/photos/56866/garden-rose-red-pink-56866.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      customerName: 'Nguyễn Thị Mai',
-      customerAvatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      rating: 5,
-      title: 'Sản phẩm tuyệt vời!',
-      comment: 'Hoa rất tươi và đẹp, giao hàng nhanh. Người yêu rất thích! Sẽ mua lại lần sau.',
-      date: '15/01/2025',
-      status: 'approved',
-      helpful: 12,
-      reported: false,
-      verified: true
-    },
-    {
-      id: 2,
-      productId: 2,
-      productName: 'Đồng hồ thông minh',
-      productImage: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      customerName: 'Trần Văn Nam',
-      customerAvatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      rating: 4,
-      title: 'Chất lượng tốt',
-      comment: 'Đồng hồ hoạt động ổn định, pin trâu. Thiết kế đẹp, phù hợp với giá tiền.',
-      date: '14/01/2025',
-      status: 'approved',
-      helpful: 8,
-      reported: false,
-      verified: true,
-      response: 'Cảm ơn bạn đã đánh giá! Chúng tôi rất vui khi sản phẩm đáp ứng được mong đợi của bạn.'
-    },
-    {
-      id: 3,
-      productId: 3,
-      productName: 'Chocolate handmade',
-      productImage: 'https://images.pexels.com/photos/918327/pexels-photo-918327.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      customerName: 'Lê Thị Hoa',
-      customerAvatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      rating: 5,
-      title: 'Ngon tuyệt vời',
-      comment: 'Chocolate rất ngon, vị đậm đà. Đóng gói đẹp, phù hợp làm quà tặng.',
-      date: '13/01/2025',
-      status: 'approved',
-      helpful: 15,
-      reported: false,
-      verified: false
-    },
-    {
-      id: 4,
-      productId: 1,
-      productName: 'Hoa hồng đỏ cao cấp',
-      productImage: 'https://images.pexels.com/photos/56866/garden-rose-red-pink-56866.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      customerName: 'Phạm Văn Đức',
-      customerAvatar: 'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      rating: 2,
-      title: 'Không như mong đợi',
-      comment: 'Hoa không tươi như trong hình, giao hàng chậm. Dịch vụ cần cải thiện.',
-      date: '12/01/2025',
-      status: 'pending',
-      helpful: 3,
-      reported: true,
-      verified: false
-    },
-    {
-      id: 5,
-      productId: 4,
-      productName: 'Nước hoa nữ cao cấp',
-      productImage: 'https://images.pexels.com/photos/1190829/pexels-photo-1190829.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      customerName: 'Hoàng Thị Lan',
-      customerAvatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1',
-      rating: 1,
-      title: 'Rất tệ',
-      comment: 'Sản phẩm giả, mùi hương khó chịu. Yêu cầu hoàn tiền.',
-      date: '11/01/2025',
-      status: 'rejected',
-      helpful: 0,
-      reported: true,
-      verified: false
-    }
-  ]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+
+  // Fetch reviews on mount
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setLoading(true);
+      try {
+        const data = await apiService.getAllReviews() as any[];
+        // Map API data to Review[]
+        const mapped = data.map((r: any) => ({
+          id: r.id,
+          productId: r.product_id,
+          productName: r.product_name,
+          productImage: r.product_image || '',
+          customerName: r.first_name + ' ' + r.last_name,
+          customerAvatar: r.customer_avatar || '',
+          rating: r.rating,
+          title: r.title || '',
+          comment: r.comment,
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString('vi-VN') : '',
+          status: r.status || 'pending',
+          helpful: r.helpful || 0,
+          reported: r.reported || false,
+          verified: r.verified || false,
+          response: r.response || '',
+        }));
+        setReviews(mapped);
+      } catch (err: any) {
+        addToast({ type: 'error', title: 'Lỗi', description: err.message });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReviews();
+  }, [addToast]);
 
   const statusOptions = [
     { value: 'all', label: 'Tất cả trạng thái' },
@@ -183,38 +137,63 @@ export const ReviewManagement = ({ onBack }: ReviewManagementProps): JSX.Element
     ));
   };
 
-  const handleApproveReview = (reviewId: number) => {
-    setReviews(prev => prev.map(review => 
-      review.id === reviewId ? { ...review, status: 'approved' } : review
-    ));
-    addToast({
-      type: 'success',
-      title: 'Đã duyệt đánh giá',
-      description: `Đánh giá #${reviewId} đã được duyệt`,
-      duration: 3000
-    });
+  const reloadReviews = async () => {
+    setLoading(true);
+    try {
+      const data = await apiService.getAllReviews() as any[];
+      const mapped = data.map((r: any) => ({
+        id: r.id,
+        productId: r.product_id,
+        productName: r.product_name,
+        productImage: r.product_image || '',
+        customerName: r.first_name + ' ' + r.last_name,
+        customerAvatar: r.customer_avatar || '',
+        rating: r.rating,
+        title: r.title || '',
+        comment: r.comment,
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString('vi-VN') : '',
+        status: r.status || 'pending',
+        helpful: r.helpful || 0,
+        reported: r.reported || false,
+        verified: r.verified || false,
+        response: r.response || '',
+      }));
+      setReviews(mapped);
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: err.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRejectReview = (reviewId: number) => {
-    setReviews(prev => prev.map(review => 
-      review.id === reviewId ? { ...review, status: 'rejected' } : review
-    ));
-    addToast({
-      type: 'info',
-      title: 'Đã từ chối đánh giá',
-      description: `Đánh giá #${reviewId} đã bị từ chối`,
-      duration: 3000
-    });
+  const handleApproveReview = async (reviewId: number) => {
+    try {
+      await apiService.approveReview(reviewId);
+      addToast({ type: 'success', title: 'Đã duyệt đánh giá', description: `Đánh giá #${reviewId} đã được duyệt` });
+      reloadReviews();
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: err.message });
+    }
   };
 
-  const handleDeleteReview = (reviewId: number) => {
-    setReviews(prev => prev.filter(review => review.id !== reviewId));
-    addToast({
-      type: 'success',
-      title: 'Đã xóa đánh giá',
-      description: `Đánh giá #${reviewId} đã được xóa`,
-      duration: 3000
-    });
+  const handleRejectReview = async (reviewId: number) => {
+    try {
+      await apiService.rejectReview(reviewId);
+      addToast({ type: 'info', title: 'Đã từ chối đánh giá', description: `Đánh giá #${reviewId} đã bị từ chối` });
+      reloadReviews();
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: err.message });
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: number) => {
+    try {
+      await apiService.deleteReview(reviewId);
+      addToast({ type: 'success', title: 'Đã xóa đánh giá', description: `Đánh giá #${reviewId} đã được xóa` });
+      reloadReviews();
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Lỗi', description: err.message });
+    }
   };
 
   const handleViewReview = (review: Review) => {
@@ -228,22 +207,18 @@ export const ReviewManagement = ({ onBack }: ReviewManagementProps): JSX.Element
     setShowReplyModal(true);
   };
 
-  const handleSaveReply = () => {
+  const handleSaveReply = async () => {
     if (selectedReview && replyText.trim()) {
-      setReviews(prev => prev.map(review => 
-        review.id === selectedReview.id 
-          ? { ...review, response: replyText.trim() }
-          : review
-      ));
-      setShowReplyModal(false);
-      setReplyText('');
-      setSelectedReview(null);
-      addToast({
-        type: 'success',
-        title: 'Đã lưu phản hồi',
-        description: 'Phản hồi của bạn đã được lưu thành công',
-        duration: 3000
-      });
+      try {
+        await apiService.updateReviewReply(selectedReview.id, replyText.trim());
+        addToast({ type: 'success', title: 'Đã lưu phản hồi', description: 'Phản hồi của bạn đã được lưu thành công' });
+        setShowReplyModal(false);
+        setReplyText('');
+        setSelectedReview(null);
+        reloadReviews();
+      } catch (err: any) {
+        addToast({ type: 'error', title: 'Lỗi', description: err.message });
+      }
     }
   };
 

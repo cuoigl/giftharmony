@@ -42,6 +42,7 @@ import { ToastProvider } from "./components/ui/toast";
 import { ProtectedRoute } from "./components/common/ProtectedRoute";
 import { Forbidden } from "./pages/Forbidden";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import React, { useState } from "react";
 
 // Wrapper để lấy id từ params và truyền vào ProductDetail
 function ProductDetailWrapper(props: any) {
@@ -58,6 +59,7 @@ function AppRoutes() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [checkoutData, setCheckoutData] = useState<any>(null);
 
   const handleLoginSuccess = () => {
     if (user?.role === "admin") {
@@ -170,7 +172,10 @@ function AppRoutes() {
           element={
             <Cart
               onBack={() => navigate(-1)}
-              onCheckout={() => navigate("/checkout")}
+              onCheckout={(data) => {
+                setCheckoutData(data);
+                navigate("/checkout");
+              }}
             />
           }
         />
@@ -180,6 +185,10 @@ function AppRoutes() {
             <Checkout
               onBack={() => navigate("/cart")}
               onOrderComplete={() => navigate("/order-success")}
+              appliedPromo={checkoutData?.appliedPromo || null}
+              selectedShipping={checkoutData?.selectedShipping || "standard"}
+              discount={checkoutData?.discount || 0}
+              shippingCost={checkoutData?.shippingCost || 0}
             />
           }
         />

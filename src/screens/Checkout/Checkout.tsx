@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
   CreditCard,
@@ -22,10 +22,16 @@ import { useCart } from "../../contexts/CartContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../components/ui/toast";
 import { apiService } from "../../services/api";
+import { useVietnamAddress } from "../../hooks/useVietnamAddress";
+import { useNavigate } from "react-router-dom";
 
 interface CheckoutProps {
   onBack: () => void;
   onOrderComplete: () => void;
+  appliedPromo: any; // hoặc PromoCode | null nếu import được
+  selectedShipping: string;
+  discount: number;
+  shippingCost: number;
 }
 
 interface ShippingInfo {
@@ -49,10 +55,26 @@ interface PaymentMethod {
 export const Checkout = ({
   onBack,
   onOrderComplete,
+  appliedPromo,
+  selectedShipping,
+  discount,
+  shippingCost,
 }: CheckoutProps): JSX.Element => {
   const { items, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const { addToast } = useToast();
+  const {
+    provinces,
+    districts,
+    wards,
+    selectedProvince,
+    setSelectedProvince,
+    selectedDistrict,
+    setSelectedDistrict,
+    selectedWard,
+    setSelectedWard,
+  } = useVietnamAddress();
+  const navigate = useNavigate();
 
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     fullName: user?.name || "",
@@ -69,6 +91,7 @@ export const Checkout = ({
   const [selectedDelivery, setSelectedDelivery] = useState("standard");
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [promoCode, setPromoCode] = useState("");
 
   const paymentMethods: PaymentMethod[] = [
     {
@@ -177,9 +200,19 @@ export const Checkout = ({
         quantity: item.quantity,
       }));
       const shipping_address = `${shippingInfo.address}, ${shippingInfo.ward}, ${shippingInfo.district}, ${shippingInfo.city}`;
-      await apiService.createOrder({
+      const subtotal = getTotalPrice();
+      const selectedDeliveryOption = deliveryOptions.find(
+        (option) => option.id === selectedDelivery
+      );
+      const shippingCost = selectedDeliveryOption?.price || 0;
+      const finalTotal = subtotal + shippingCost - discount;
+      const order = await apiService.createOrder({
         items: orderItems,
         shipping_address,
+        shipping_fee: shippingCost,
+        discount,
+        promo_code: promoCode,
+        final_total: finalTotal,
       });
 
       addToast({
@@ -191,7 +224,7 @@ export const Checkout = ({
       });
 
       clearCart();
-      onOrderComplete();
+      navigate("/order-success", { state: { order: order.order } });
     } catch (error: any) {
       addToast({
         type: "error",
@@ -212,8 +245,24 @@ export const Checkout = ({
     (option) => option.id === selectedDelivery
   );
   const subtotal = getTotalPrice();
-  const shippingCost = selectedDeliveryOption?.price || 0;
   const total = subtotal + shippingCost;
+
+  // Đồng bộ state shippingInfo với hook địa chỉ khi user context thay đổi
+  useEffect(() => {
+    if (shippingInfo.city) {
+      const foundProvince = provinces.find((p) => p.name === shippingInfo.city);
+      if (foundProvince) setSelectedProvince(foundProvince.code);
+    }
+    if (shippingInfo.district) {
+      const foundDistrict = districts.find((d) => d.name === shippingInfo.district);
+      if (foundDistrict) setSelectedDistrict(foundDistrict.code);
+    }
+    if (shippingInfo.ward) {
+      const foundWard = wards.find((w) => w.name === shippingInfo.ward);
+      if (foundWard) setSelectedWard(foundWard.code);
+    }
+    // eslint-disable-next-line
+  }, [provinces, districts, wards]);
 
   return (
     <div className="min-h-screen bg-[#fffefc]">
@@ -310,30 +359,43 @@ export const Checkout = ({
                       Tỉnh/Thành phố *
                     </label>
                     <select
-                      value={shippingInfo.city}
-                      onChange={(e) =>
-                        handleInputChange("city", e.target.value)
-                      }
+                      value={selectedProvince}
+                      onChange={(e) => {
+                        setSelectedProvince(e.target.value);
+                        const province = provinces.find((p) => p.code === e.target.value);
+                        handleInputChange("city", province ? province.name : "");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                     >
-                      <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                      <option value="Hà Nội">Hà Nội</option>
-                      <option value="Đà Nẵng">Đà Nẵng</option>
-                      <option value="Cần Thơ">Cần Thơ</option>
+                      <option value="">Chọn tỉnh/thành phố</option>
+                      {provinces.map((province) => (
+                        <option key={province.code} value={province.code}>
+                          {province.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Quận/Huyện *
                     </label>
-                    <Input
-                      value={shippingInfo.district}
-                      onChange={(e) =>
-                        handleInputChange("district", e.target.value)
-                      }
-                      placeholder="Chọn quận/huyện"
-                      className={errors.district ? "border-red-500" : ""}
-                    />
+                    <select
+                      value={selectedDistrict}
+                      onChange={(e) => {
+                        setSelectedDistrict(e.target.value);
+                        const district = districts.find((d) => d.code === e.target.value);
+                        handleInputChange("district", district ? district.name : "");
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
+                      disabled={!selectedProvince}
+                    >
+                      <option value="">Chọn quận/huyện</option>
+                      {districts.map((district) => (
+                        <option key={district.code} value={district.code}>
+                          {district.name}
+                        </option>
+                      ))}
+                    </select>
                     {errors.district && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.district}
@@ -344,14 +406,23 @@ export const Checkout = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Phường/Xã *
                     </label>
-                    <Input
-                      value={shippingInfo.ward}
-                      onChange={(e) =>
-                        handleInputChange("ward", e.target.value)
-                      }
-                      placeholder="Chọn phường/xã"
-                      className={errors.ward ? "border-red-500" : ""}
-                    />
+                    <select
+                      value={selectedWard}
+                      onChange={(e) => {
+                        setSelectedWard(e.target.value);
+                        const ward = wards.find((w) => w.code === e.target.value);
+                        handleInputChange("ward", ward ? ward.name : "");
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
+                      disabled={!selectedDistrict}
+                    >
+                      <option value="">Chọn phường/xã</option>
+                      {wards.map((ward) => (
+                        <option key={ward.code} value={ward.code}>
+                          {ward.name}
+                        </option>
+                      ))}
+                    </select>
                     {errors.ward && (
                       <p className="text-red-500 text-sm mt-1">{errors.ward}</p>
                     )}

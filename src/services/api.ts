@@ -1,6 +1,14 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5001/api";
 
+// Fix linter for import.meta.env
+interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
+}
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 class ApiService {
   private baseURL: string;
   private token: string | null = null;
@@ -214,6 +222,10 @@ class ApiService {
   async createOrder(orderData: {
     items: Array<{ product_id: number; quantity: number }>;
     shipping_address: string;
+    shipping_fee?: number;
+    discount?: number;
+    promo_code?: string;
+    final_total?: number;
   }) {
     const response = await fetch(`${this.baseURL}/orders`, {
       method: "POST",
@@ -400,6 +412,81 @@ class ApiService {
       body: JSON.stringify({ role }),
     });
 
+    return this.handleResponse(response);
+  }
+
+  // Promotions endpoints
+  async getPromotions() {
+    const response = await fetch(`${this.baseURL}/promotions`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async createPromotion(promotionData: any) {
+    const response = await fetch(`${this.baseURL}/promotions`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify(promotionData),
+    });
+    return this.handleResponse(response);
+  }
+
+  async updatePromotion(id: number, promotionData: any) {
+    const response = await fetch(`${this.baseURL}/promotions/${id}`, {
+      method: "PUT",
+      headers: this.getHeaders(),
+      body: JSON.stringify(promotionData),
+    });
+    return this.handleResponse(response);
+  }
+
+  async deletePromotion(id: number) {
+    const response = await fetch(`${this.baseURL}/promotions/${id}`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Admin Reviews endpoints
+  async getAllReviews() {
+    const response = await fetch(`${this.baseURL}/reviews/admin`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async approveReview(reviewId: number) {
+    const response = await fetch(`${this.baseURL}/reviews/admin/${reviewId}/approve`, {
+      method: "PUT",
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async rejectReview(reviewId: number) {
+    const response = await fetch(`${this.baseURL}/reviews/admin/${reviewId}/reject`, {
+      method: "PUT",
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async deleteReview(reviewId: number) {
+    const response = await fetch(`${this.baseURL}/reviews/admin/${reviewId}`, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateReviewReply(reviewId: number, reply: string) {
+    const response = await fetch(`${this.baseURL}/reviews/admin/${reviewId}/reply`, {
+      method: "PUT",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ reply }),
+    });
     return this.handleResponse(response);
   }
 }
