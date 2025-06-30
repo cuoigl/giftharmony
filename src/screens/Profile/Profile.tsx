@@ -83,7 +83,9 @@ export const Profile = ({
         // Đảm bảo response là mảng đơn hàng đúng format backend trả về
         const ordersArray = Array.isArray(response)
           ? response
-          : (response && typeof response === 'object' && Array.isArray((response as any).orders))
+          : response &&
+            typeof response === "object" &&
+            Array.isArray((response as any).orders)
           ? (response as any).orders
           : [];
         const statusMap: Record<string, string> = {
@@ -382,12 +384,20 @@ export const Profile = ({
                 </div>
                 <div className="flex-1 flex flex-col gap-2 items-center md:items-start">
                   <h2 className="text-3xl font-bold text-gray-900 font-['Poppins',Helvetica] tracking-wide">
-                    {user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : ""}
+                    {user
+                      ? `${user.first_name || ""} ${
+                          user.last_name || ""
+                        }`.trim()
+                      : ""}
                   </h2>
-                  <p className="text-gray-600 flex items-center gap-2"><Mail className="h-4 w-4 mr-1 text-[#49bbbd]" />{user?.email}</p>
+                  <p className="text-gray-600 flex items-center gap-2">
+                    <Mail className="h-4 w-4 mr-1 text-[#49bbbd]" />
+                    {user?.email}
+                  </p>
                   <div className="flex items-center mt-2 gap-2">
                     <span className="inline-block px-4 py-1 bg-gradient-to-r from-[#49bbbd] to-[#3a9a9c] text-white text-base rounded-full font-semibold shadow-md animate-pulse">
-                      <Star className="inline h-4 w-4 mr-1 -mt-1" />{user?.level}
+                      <Star className="inline h-4 w-4 mr-1 -mt-1" />
+                      {user?.level}
                     </span>
                   </div>
                 </div>
@@ -538,8 +548,13 @@ export const Profile = ({
                         value={selectedProvince}
                         onChange={(e) => {
                           setSelectedProvince(e.target.value);
-                          const province = provinces.find((p) => p.code === e.target.value);
-                          handleInputChange("city", province ? province.name : "");
+                          const province = provinces.find(
+                            (p) => p.code === e.target.value
+                          );
+                          handleInputChange(
+                            "city",
+                            province ? province.name : ""
+                          );
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                       >
@@ -575,7 +590,9 @@ export const Profile = ({
                           value={selectedWard}
                           onChange={(e) => {
                             setSelectedWard(e.target.value);
-                            const ward = wards.find((w) => w.code === e.target.value);
+                            const ward = wards.find(
+                              (w) => w.code === e.target.value
+                            );
                             handleInputChange("ward", ward ? ward.name : "");
                           }}
                           className="mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
@@ -594,8 +611,13 @@ export const Profile = ({
                           value={selectedDistrict}
                           onChange={(e) => {
                             setSelectedDistrict(e.target.value);
-                            const district = districts.find((d) => d.code === e.target.value);
-                            handleInputChange("district", district ? district.name : "");
+                            const district = districts.find(
+                              (d) => d.code === e.target.value
+                            );
+                            handleInputChange(
+                              "district",
+                              district ? district.name : ""
+                            );
                           }}
                           className="mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#49bbbd]"
                           disabled={!selectedProvince}
