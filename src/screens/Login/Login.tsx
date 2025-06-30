@@ -1,5 +1,5 @@
 import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Checkbox } from "../../components/ui/checkbox";
@@ -30,6 +30,7 @@ export const Login = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingLogin, setPendingLogin] = useState(false);
 
   const [loginForm, setLoginForm] = useState({
     email: "",
@@ -48,7 +49,7 @@ export const Login = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { login, register, loadCurrentUser } = useAuth();
+  const { login, register, loadCurrentUser, user } = useAuth();
   const { addToast } = useToast();
 
   const validateLoginForm = () => {
@@ -115,7 +116,7 @@ export const Login = ({
         description: "Chào mừng bạn quay trở lại!",
         duration: 3000,
       });
-      window.location.reload();
+      setPendingLogin(true);
     } catch (error: any) {
       addToast({
         type: "error",
@@ -127,6 +128,13 @@ export const Login = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (pendingLogin && user?.role) {
+      if (onLoginSuccess) onLoginSuccess();
+      setPendingLogin(false);
+    }
+  }, [pendingLogin, user, onLoginSuccess]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
