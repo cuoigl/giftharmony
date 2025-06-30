@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const logger = require("./middleware/logger");
+const { testConnection } = require("./config/database");
 
 // Load environment variables
 dotenv.config();
@@ -48,6 +49,7 @@ app.use("*", (req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
+  await testConnection();
 });
